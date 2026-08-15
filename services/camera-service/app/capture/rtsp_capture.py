@@ -1,5 +1,8 @@
 import cv2
 
+cv2.utils.logging.setLogLevel(cv2.utils.logging.LOG_LEVEL_SILENT)
+
+
 def grab_frame(rtsp_url: str, timeout_ms: int = 5000):
     """Attempt to grab a single frame from an RTSP stream.
     Returns (frame, None) on success or (None, error_message) on failure.
@@ -14,7 +17,7 @@ def grab_frame(rtsp_url: str, timeout_ms: int = 5000):
         if not ok or frame is None:
             return None, "no_frame_returned"
         return frame, None
-    except Exception as e:
-        return None, str(e)
+    except Exception:
+        return None, "capture_exception"
     finally:
         cap.release()
