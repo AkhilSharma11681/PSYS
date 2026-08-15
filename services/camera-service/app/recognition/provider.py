@@ -22,7 +22,7 @@ class FaceRecognitionProvider:
     def detect(self, frame) -> list[FaceBox]: ...
     def quality(self, face_box: FaceBox) -> float: ...
     def embed(self, frame, face_box: FaceBox) -> list[float]: ...
-    def match(self, embedding, candidate_embeddings, threshold: float = 0.6) -> MatchResult: ...
+    def match(self, embedding, candidate_embeddings, threshold: float = 0.4) -> MatchResult: ...
 
 
 class DlibFaceRecognitionProvider(FaceRecognitionProvider):
@@ -42,7 +42,7 @@ class DlibFaceRecognitionProvider(FaceRecognitionProvider):
             raise ValueError("could not generate embedding for face")
         return encodings[0].tolist()
 
-    def match(self, embedding, candidate_embeddings, threshold: float = 0.6) -> MatchResult:
+    def match(self, embedding, candidate_embeddings, threshold: float = 0.4) -> MatchResult:
         if not candidate_embeddings:
             return MatchResult(matched=False, student_index=None, similarity_score=0.0)
 
