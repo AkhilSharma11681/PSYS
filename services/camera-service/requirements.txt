@@ -4,3 +4,7 @@ opencv-python-headless
 supabase
 python-dotenv
 pydantic
+face_recognition
+numpy<2          # dlib bindings break on numpy 2.x (ABI mismatch)
+setuptools<81    # face_recognition_models needs pkg_resources, removed in setuptools 81+
+python-multipart
