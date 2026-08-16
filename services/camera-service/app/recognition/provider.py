@@ -54,3 +54,26 @@ class DlibFaceRecognitionProvider(FaceRecognitionProvider):
         if best_distance <= threshold:
             return MatchResult(matched=True, student_index=best_index, similarity_score=similarity)
         return MatchResult(matched=False, student_index=None, similarity_score=similarity)
+
+
+class BestMatch:
+    def __init__(self, student_index, distance, similarity):
+        self.student_index = student_index
+        self.distance = distance
+        self.similarity = similarity
+
+
+def find_best_match(provider, embedding, candidate_embeddings):
+    """Returns raw distance/similarity without applying any threshold —
+    the caller decides matched/low_confidence/unknown based on its own
+    config (spec: thresholds live in attendance_config, not hardcoded)."""
+    import face_recognition
+    import numpy as np
+
+    if not candidate_embeddings:
+        return None
+
+    distances = face_recognition.face_distance(candidate_embeddings, np.array(embedding))
+    best_index = int(np.argmin(distances))
+    best_distance = float(distances[best_index])
+    return BestMatch(best_index, best_distance, 1 - best_distance)

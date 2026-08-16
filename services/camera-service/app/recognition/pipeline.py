@@ -1,14 +1,18 @@
 from datetime import datetime, timezone
-from app.recognition.provider import DlibFaceRecognitionProvider
+from app.recognition.provider import DlibFaceRecognitionProvider, find_best_match
 from app.recognition.matching import fetch_candidate_embeddings
 from app.recognition.observations import log_observation
+from app.recognition.config import get_recognition_config
 
 provider = DlibFaceRecognitionProvider()
-QUALITY_THRESHOLD = 0.3
-MATCH_THRESHOLD = 0.4
 
 
 def process_frame(frame, institution_id: str, session_id: str):
+    config = get_recognition_config(institution_id)
+    quality_threshold = config["quality_threshold"]
+    match_threshold = config["match_threshold"]              # confident match
+    low_confidence_threshold = config["low_confidence_threshold"]  # borderline, needs review
+
     captured_at = datetime.now(timezone.utc).isoformat()
     student_ids, candidate_embeddings = fetch_candidate_embeddings(institution_id)
 
@@ -22,24 +26,34 @@ def process_frame(frame, institution_id: str, session_id: str):
     for face in faces:
         quality = provider.quality(face)
 
-        if quality < QUALITY_THRESHOLD:
+        if quality < quality_threshold:
             log_observation(institution_id, session_id, None, captured_at,
                              None, quality, "poor_quality")
             results.append({"match_status": "poor_quality", "quality": quality})
             continue
 
         embedding = provider.embed(frame, face)
-        match = provider.match(embedding, candidate_embeddings, threshold=MATCH_THRESHOLD)
+        best = find_best_match(provider, embedding, candidate_embeddings)
 
-        if match.matched:
-            matched_student_id = student_ids[match.student_index]
-            log_observation(institution_id, session_id, matched_student_id, captured_at,
-                             match.similarity_score, quality, "matched")
-            results.append({"match_status": "matched", "student_id": matched_student_id,
-                             "similarity": match.similarity_score})
-        else:
+        if best is None:
             log_observation(institution_id, session_id, None, captured_at,
-                             match.similarity_score, quality, "unknown_face")
-            results.append({"match_status": "unknown_face", "similarity": match.similarity_score})
+                             None, quality, "unknown_face")
+            results.append({"match_status": "unknown_face"})
+            continue
+
+        matched_student_id = student_ids[best.student_index]
+
+        if best.distance <= match_threshold:
+            status = "matched"
+        elif best.distance <= low_confidence_threshold:
+            status = "low_confidence"  # surfaced to a human, not guessed
+        else:
+            status = "unknown_face"
+            matched_student_id = None  # too far to even suggest a guess
+
+        log_observation(institution_id, session_id, matched_student_id, captured_at,
+                         best.similarity, quality, status)
+        results.append({"match_status": status, "student_id": matched_student_id,
+                         "similarity": best.similarity})
 
     return {"faces_detected": len(faces), "results": results}
