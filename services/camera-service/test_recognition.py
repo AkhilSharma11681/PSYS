@@ -15,7 +15,7 @@ if __name__ == "__main__":
 
     if faces:
         face = faces[0]
-        q = provider.quality(face)
+        q = provider.quality(frame, face)
         print(f"Quality score: {q:.2f}")
 
         embedding = provider.embed(frame, face)

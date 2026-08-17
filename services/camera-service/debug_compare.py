@@ -9,7 +9,7 @@ def get_embedding(path):
     img = Image.open(path).convert("RGB")
     frame = np.array(img)
     faces = provider.detect(frame)
-    return np.array(provider.embed(frame, faces[0])), provider.quality(faces[0])
+    return np.array(provider.embed(frame, faces[0])), provider.quality(frame, faces[0])
 
 e1, q1 = get_embedding("test_face.jpg")
 e2, q2 = get_embedding("test_face_2.jpg")
