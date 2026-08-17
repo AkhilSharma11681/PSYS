@@ -1,6 +1,8 @@
 import cv2
-
-cv2.utils.logging.setLogLevel(cv2.utils.logging.LOG_LEVEL_SILENT)
+try:
+    cv2.utils.logging.setLogLevel(cv2.utils.logging.LOG_LEVEL_SILENT)
+except AttributeError:
+    pass  # not available in this opencv-python-headless build; harmless to skip
 
 
 def grab_frame(rtsp_url: str, timeout_ms: int = 5000):
