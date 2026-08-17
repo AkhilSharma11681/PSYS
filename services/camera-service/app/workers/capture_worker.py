@@ -7,6 +7,13 @@ from app.recognition.pipeline import process_frame
 from app.db.client import get_client
 
 
+class TenantMismatchError(ValueError):
+    """Raised when a camera and session belong to different institutions.
+    Distinct from a plain not-found ValueError so callers (e.g. the API
+    layer) can map it to 400 rather than 404 -- both referenced records
+    exist, they just don't belong together."""
+
+
 def run_capture_job(camera_id: str, session_id: str):
     """The core Phase 2+3 loop, shared by the API endpoint and the
     background worker so the logic only lives in one place."""
@@ -17,6 +24,12 @@ def run_capture_job(camera_id: str, session_id: str):
 
     camera = cam.data[0]
     institution_id = camera["institution_id"]
+
+    session = client.table("class_sessions").select("institution_id").eq("id", session_id).execute()
+    if not session.data:
+        raise ValueError("session not found")
+    if session.data[0]["institution_id"] != institution_id:
+        raise TenantMismatchError("camera and session belong to different institutions")
 
     rtsp_url = build_rtsp_url(camera["host"], camera["stream_path"], camera["credential_ref"])
     frame, error = grab_frame(rtsp_url)

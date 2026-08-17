@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from PIL import Image
 import numpy as np
 
-from app.workers.capture_worker import run_capture_job
+from app.workers.capture_worker import run_capture_job, TenantMismatchError
 from app.recognition.provider import DlibFaceRecognitionProvider
 
 app = FastAPI(title="PSYS Camera Service")
@@ -25,6 +25,8 @@ class SessionRequest(BaseModel):
 def capture_and_recognize(camera_id: str, body: SessionRequest):
     try:
         result = run_capture_job(camera_id, body.session_id)
+    except TenantMismatchError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     return result
@@ -34,7 +36,7 @@ def capture_and_recognize(camera_id: str, body: SessionRequest):
 async def internal_embed(file: UploadFile = File(...)):
     """Thin wrapper around detect() -> quality() -> embed() for the
     enrollment-feature to call, instead of duplicating provider.py.
-    No new recognition logic here — same code path camera-feature uses."""
+    No new recognition logic here -- same code path camera-feature uses."""
     contents = await file.read()
 
     try:
