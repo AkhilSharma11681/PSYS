@@ -5,6 +5,37 @@ import { DEV_INSTITUTION_ID } from '@/lib/constants'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
+async function uploadPhotoAndQueueJob(
+  supabase: ReturnType<typeof createAdminClient>,
+  institutionId: string,
+  studentId: string,
+  photo: File
+) {
+  const ext = photo.name.split('.').pop() || 'jpg'
+  const storagePath = `${institutionId}/${studentId}/${crypto.randomUUID()}.${ext}`
+
+  const { error: uploadError } = await supabase.storage
+    .from('enrollment-photos')
+    .upload(storagePath, photo)
+
+  if (uploadError) {
+    throw new Error(`Failed to upload photo: ${uploadError.message}`)
+  }
+
+  const { error: jobError } = await supabase
+    .from('enrollment_jobs')
+    .insert({
+      institution_id: institutionId,
+      student_id: studentId,
+      storage_path: storagePath,
+      status: 'pending',
+    })
+
+  if (jobError) {
+    throw new Error(`Failed to queue embedding job: ${jobError.message}`)
+  }
+}
+
 export async function createStudent(formData: FormData) {
   const fullName = (formData.get('full_name') as string)?.trim()
   const rollNumber = (formData.get('roll_number') as string)?.trim()
@@ -32,31 +63,33 @@ export async function createStudent(formData: FormData) {
   }
 
   if (photo && photo.size > 0) {
-    const ext = photo.name.split('.').pop() || 'jpg'
-    const storagePath = `${DEV_INSTITUTION_ID}/${student.id}/${crypto.randomUUID()}.${ext}`
-
-    const { error: uploadError } = await supabase.storage
-      .from('enrollment-photos')
-      .upload(storagePath, photo)
-
-    if (uploadError) {
-      throw new Error(`Failed to upload photo: ${uploadError.message}`)
-    }
-
-    const { error: jobError } = await supabase
-      .from('enrollment_jobs')
-      .insert({
-        institution_id: DEV_INSTITUTION_ID,
-        student_id: student.id,
-        storage_path: storagePath,
-        status: 'pending',
-      })
-
-    if (jobError) {
-      throw new Error(`Failed to queue embedding job: ${jobError.message}`)
-    }
+    await uploadPhotoAndQueueJob(supabase, DEV_INSTITUTION_ID, student.id, photo)
   }
 
   revalidatePath('/students')
-  redirect('/students')
+  redirect(`/students/${student.id}`)
+}
+
+export async function addEnrollmentPhoto(studentId: string, formData: FormData) {
+  const photo = formData.get('photo') as File | null
+
+  if (!photo || photo.size === 0) {
+    throw new Error('Photo is required')
+  }
+
+  const supabase = createAdminClient()
+
+  const { data: student, error: studentError } = await supabase
+    .from('students')
+    .select('institution_id')
+    .eq('id', studentId)
+    .single()
+
+  if (studentError || !student) {
+    throw new Error('Student not found')
+  }
+
+  await uploadPhotoAndQueueJob(supabase, student.institution_id, studentId, photo)
+
+  revalidatePath(`/students/${studentId}`)
 }

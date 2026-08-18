@@ -33,18 +33,22 @@ export default async function StudentsPage() {
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="text-left border-b">
-              <th className="py-2">Name</th>
-              <th className="py-2">Roll No.</th>
-              <th className="py-2">Status</th>
+              <th className="py-2 pr-4">Name</th>
+              <th className="py-2 pr-4">Roll No.</th>
+              <th className="py-2 pr-4">Status</th>
               <th className="py-2">Photos</th>
             </tr>
           </thead>
           <tbody>
             {students?.map((s) => (
               <tr key={s.id} className="border-b">
-                <td className="py-2">{s.full_name}</td>
-                <td className="py-2">{s.roll_number || '—'}</td>
-                <td className="py-2">{s.status}</td>
+                <td className="py-2 pr-4">
+                  <Link href={`/students/${s.id}`} className="underline">
+                    {s.full_name}
+                  </Link>
+                </td>
+                <td className="py-2 pr-4">{s.roll_number || '—'}</td>
+                <td className="py-2 pr-4">{s.status}</td>
                 <td className="py-2">{s.enrollment_photo_count}</td>
               </tr>
             ))}
