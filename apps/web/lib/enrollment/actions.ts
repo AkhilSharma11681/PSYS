@@ -93,3 +93,36 @@ export async function addEnrollmentPhoto(studentId: string, formData: FormData) 
 
   revalidatePath(`/students/${studentId}`)
 }
+
+export async function updateStudent(studentId: string, formData: FormData) {
+  const fullName = (formData.get('full_name') as string)?.trim()
+  const rollNumber = (formData.get('roll_number') as string)?.trim()
+  const status = formData.get('status') as string
+
+  if (!fullName) {
+    throw new Error('Full name is required')
+  }
+
+  const validStatuses = ['active', 'inactive', 'graduated', 'transferred']
+  if (!validStatuses.includes(status)) {
+    throw new Error('Invalid status')
+  }
+
+  const supabase = createAdminClient()
+
+  const { error } = await supabase
+    .from('students')
+    .update({
+      full_name: fullName,
+      roll_number: rollNumber || null,
+      status,
+    })
+    .eq('id', studentId)
+
+  if (error) {
+    throw new Error(`Failed to update student: ${error.message}`)
+  }
+
+  revalidatePath(`/students/${studentId}`)
+  revalidatePath('/students')
+}
