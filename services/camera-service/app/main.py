@@ -51,7 +51,7 @@ async def internal_embed(file: UploadFile = File(...)):
         raise HTTPException(status_code=422, detail="multiple_faces_detected")
 
     face = faces[0]
-    quality = embed_provider.quality(face)
+    quality = embed_provider.quality(frame, face)
     embedding = embed_provider.embed(frame, face)
 
     return {

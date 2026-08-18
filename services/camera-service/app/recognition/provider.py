@@ -20,7 +20,7 @@ class MatchResult:
 
 class FaceRecognitionProvider:
     def detect(self, frame) -> list[FaceBox]: ...
-    def quality(self, face_box: FaceBox) -> float: ...
+    def quality(self, frame, face_box: FaceBox) -> float: ...
     def embed(self, frame, face_box: FaceBox) -> list[float]: ...
     def match(self, embedding, candidate_embeddings, threshold: float = 0.4) -> MatchResult: ...
 
@@ -30,10 +30,45 @@ class DlibFaceRecognitionProvider(FaceRecognitionProvider):
         locations = face_recognition.face_locations(frame)
         return [FaceBox(top=t, right=r, bottom=b, left=l) for (t, r, b, l) in locations]
 
-    def quality(self, face_box: FaceBox) -> float:
-        width = face_box.right - face_box.left
-        height = face_box.bottom - face_box.top
-        return min(1.0, (width * height) / (150 * 150))
+    def quality(self, frame, face_box: FaceBox) -> float:
+        """Combines three checks into one conservative score: face size,
+        blur (sharpness), and lighting. Uses min() rather than an average
+        so a face that fails badly on any single dimension (e.g. sharp
+        but pitch-black, or big but blurry) can't be masked by scoring
+        well on the others."""
+        import cv2
+
+        top, right, bottom, left = face_box.top, face_box.right, face_box.bottom, face_box.left
+        crop = frame[max(0, top):bottom, max(0, left):right]
+        if crop.size == 0:
+            return 0.0
+
+        width = right - left
+        height = bottom - top
+        size_score = min(1.0, (width * height) / (150 * 150))
+
+        gray = cv2.cvtColor(crop, cv2.COLOR_RGB2GRAY)
+
+        # Blur: variance of the Laplacian. Sharp edges produce high
+        # variance; blur smooths edges out and collapses it toward 0.
+        # 100 is an empirical "acceptably sharp" floor from webcam
+        # testing, not a theoretical constant — revisit if false
+        # poor_quality rejections show up in production logs.
+        laplacian_var = cv2.Laplacian(gray, cv2.CV_64F).var()
+        blur_score = min(1.0, laplacian_var / 100.0)
+
+        # Lighting: mean brightness should sit in a usable mid-range.
+        # Underexposed or blown-out crops both degrade embedding
+        # quality even when the face is sharp and well-sized.
+        mean_brightness = float(np.mean(gray))
+        if mean_brightness < 40:
+            brightness_score = mean_brightness / 40.0
+        elif mean_brightness > 220:
+            brightness_score = max(0.0, (255 - mean_brightness) / 35.0)
+        else:
+            brightness_score = 1.0
+
+        return max(0.0, min(size_score, blur_score, brightness_score))
 
     def embed(self, frame, face_box: FaceBox) -> list[float]:
         location = (face_box.top, face_box.right, face_box.bottom, face_box.left)

@@ -24,7 +24,7 @@ def process_frame(frame, institution_id: str, session_id: str):
 
     results = []
     for face in faces:
-        quality = provider.quality(face)
+        quality = provider.quality(frame, face)
 
         if quality < quality_threshold:
             log_observation(institution_id, session_id, None, captured_at,
