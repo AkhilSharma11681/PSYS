@@ -71,6 +71,10 @@ def process_job(job):
             {"enrollment_photo_count": current_count + 1}
         ).eq("id", student_id).execute()
 
+        # Mark done BEFORE deleting the photo -- if the delete step below
+        # fails, the embedding is already safely stored and the job is
+        # correctly marked complete; we just log a cleanup warning rather
+        # than treating storage deletion as part of the critical path.
         supabase.table("enrollment_jobs").update(
             {
                 "status": "done",
@@ -79,6 +83,15 @@ def process_job(job):
         ).eq("id", job_id).execute()
 
         print(f"[done] job {job_id} -> student {student_id}")
+
+        # Spec Section 9 (Privacy & Biometric Data Lifecycle): once the
+        # embedding is generated, the raw enrollment photo should not be
+        # kept long-term -- only the embedding vector persists.
+        try:
+            supabase.storage.from_("enrollment-photos").remove([storage_path])
+            print(f"[cleanup] deleted source photo for job {job_id}")
+        except Exception as cleanup_error:
+            print(f"[cleanup warning] job {job_id} photo not deleted: {cleanup_error}")
 
     except Exception as e:
         supabase.table("enrollment_jobs").update(
