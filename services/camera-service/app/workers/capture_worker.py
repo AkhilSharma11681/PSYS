@@ -45,6 +45,6 @@ def run_capture_job(camera_id: str, session_id: str):
     if not succeeded:
         return {"capture_succeeded": False, "error": error, "recognition": None}
 
-    recognition_result = process_frame(frame, institution_id, session_id)
+    recognition_result = process_frame(frame, institution_id, session_id, frame_path)
     return {"capture_succeeded": True, "error": None, "recognition": recognition_result,
             "frame_path": frame_path}
