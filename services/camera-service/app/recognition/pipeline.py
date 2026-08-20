@@ -14,7 +14,7 @@ def process_frame(frame, institution_id: str, session_id: str):
     low_confidence_threshold = config["low_confidence_threshold"]  # borderline, needs review
 
     captured_at = datetime.now(timezone.utc).isoformat()
-    student_ids, candidate_embeddings = fetch_candidate_embeddings(institution_id)
+    student_ids, candidate_embeddings = fetch_candidate_embeddings(institution_id, session_id)
 
     faces = provider.detect(frame)
     if not faces:
