@@ -11,29 +11,14 @@ def _parse_embedding(raw):
 
 
 def fetch_candidate_embeddings(institution_id: str, session_id: str):
-    """Per spec Section 7 Guardrail 3: matching must be scoped to the
-    session's class roster via class_enrollments, never the full
-    institution table.
-
-    Also enforces Guardrail 13: a student's status is checked here so a
-    stale enrollment row for an inactive/graduated/transferred student
-    can't cause a false match."""
+    """Per spec Section 7 Guardrail 3 (class-scoped matching) AND Section 1
+    (check-in-narrowed monitoring roster). Calls the shared SQL function
+    derive_session_roster() -- same logic apps/web uses -- instead of
+    duplicating roster-building here (matches the embed() reuse pattern)."""
     client = get_client()
 
-    session = client.table("class_sessions").select("class_id").eq("id", session_id).execute()
-    if not session.data or not session.data[0]["class_id"]:
-        return [], []
-
-    class_id = session.data[0]["class_id"]
-
-    enrollments = (
-        client.table("class_enrollments")
-        .select("student_id")
-        .eq("class_id", class_id)
-        .eq("status", "active")
-        .execute()
-    )
-    enrolled_ids = [row["student_id"] for row in enrollments.data]
+    roster = client.rpc("derive_session_roster", {"p_session_id": session_id}).execute()
+    enrolled_ids = [row["student_id"] for row in roster.data]
     if not enrolled_ids:
         return [], []
 

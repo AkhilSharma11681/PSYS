@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from PIL import Image
 import numpy as np
 from app.recognition.pipeline import process_frame
@@ -8,5 +9,6 @@ SESSION_ID = "b8a2512c-ed44-4116-8dbf-6b557e123592"
 img = Image.open("test_face.jpg").convert("RGB")
 frame = np.array(img)
 
-result = process_frame(frame, INSTITUTION_ID, SESSION_ID)
+captured_at = datetime.now(timezone.utc).isoformat()
+result = process_frame(frame, INSTITUTION_ID, SESSION_ID, frame_path=None, captured_at=captured_at)
 print(result)
