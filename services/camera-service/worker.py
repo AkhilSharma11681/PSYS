@@ -3,17 +3,38 @@ from datetime import datetime, timezone
 from app.db.client import get_client
 from app.workers.capture_worker import run_capture_job
 
+MAX_JOBS_PER_INSTITUTION_PER_POLL = 5
+
 
 def claim_next_job(client):
-    """Atomic claim: update pending->processing and return the row.
-    If two workers race, only one gets a non-empty result — this is
-    the idempotency pattern your spec uses for finalization too."""
     now = datetime.now(timezone.utc).isoformat()
+
+    pending = (
+        client.table("capture_jobs")
+        .select("id, institution_id")
+        .eq("status", "pending")
+        .lte("run_at", now)
+        .order("run_at")
+        .limit(200)
+        .execute()
+    )
+    if not pending.data:
+        return []
+
+    capped_ids = []
+    counts = {}
+    for job in pending.data:
+        inst = job["institution_id"]
+        counts[inst] = counts.get(inst, 0)
+        if counts[inst] < MAX_JOBS_PER_INSTITUTION_PER_POLL:
+            capped_ids.append(job["id"])
+            counts[inst] += 1
+
     result = (
         client.table("capture_jobs")
         .update({"status": "processing", "claimed_at": now})
         .eq("status", "pending")
-        .lte("run_at", now)
+        .in_("id", capped_ids)
         .execute()
     )
     return result.data
@@ -43,7 +64,6 @@ def run_worker(poll_interval_sec=2, max_idle_polls=15):
                 }).eq("id", job_id).execute()
                 print(f"Job {job_id}: {result}")
             except Exception as e:
-                # A job failure must never crash the worker (spec Section 7)
                 client.table("capture_jobs").update({
                     "status": "failed",
                     "error": str(e),
@@ -51,7 +71,7 @@ def run_worker(poll_interval_sec=2, max_idle_polls=15):
                 }).eq("id", job_id).execute()
                 print(f"Job {job_id} failed: {e}")
 
-    print("No jobs for a while — worker stopping.")
+    print("No jobs for a while -- worker stopping.")
 
 
 if __name__ == "__main__":
