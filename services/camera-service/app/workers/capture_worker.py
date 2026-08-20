@@ -1,8 +1,10 @@
+import time
 from app.capture.rtsp_capture import grab_frame
 from app.capture.credentials import build_rtsp_url
 from app.capture.health import update_camera_health
 from app.capture.events import log_capture_event
 from app.capture.storage import upload_frame
+from app.capture.metrics import record_processing_metric
 from app.recognition.pipeline import process_frame
 from app.db.client import get_client
 
@@ -16,6 +18,8 @@ class SessionNotActiveError(ValueError):
 
 
 def run_capture_job(camera_id: str, session_id: str):
+    job_start = time.perf_counter()
+
     client = get_client()
     cam = client.table("cameras").select("*").eq("id", camera_id).execute()
     if not cam.data:
@@ -43,8 +47,14 @@ def run_capture_job(camera_id: str, session_id: str):
     log_capture_event(institution_id, session_id, camera_id, succeeded, error, frame_path)
 
     if not succeeded:
+        processing_time_ms = (time.perf_counter() - job_start) * 1000
+        record_processing_metric(institution_id, session_id, False, processing_time_ms)
         return {"capture_succeeded": False, "error": error, "recognition": None}
 
     recognition_result = process_frame(frame, institution_id, session_id, frame_path)
+
+    processing_time_ms = (time.perf_counter() - job_start) * 1000
+    record_processing_metric(institution_id, session_id, True, processing_time_ms)
+
     return {"capture_succeeded": True, "error": None, "recognition": recognition_result,
             "frame_path": frame_path}
