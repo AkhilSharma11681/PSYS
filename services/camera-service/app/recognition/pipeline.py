@@ -7,19 +7,19 @@ from app.recognition.config import get_recognition_config
 provider = DlibFaceRecognitionProvider()
 
 
-def process_frame(frame, institution_id: str, session_id: str):
+def process_frame(frame, institution_id: str, session_id: str, frame_path: str = None):
     config = get_recognition_config(institution_id)
     quality_threshold = config["quality_threshold"]
-    match_threshold = config["match_threshold"]              # confident match
-    low_confidence_threshold = config["low_confidence_threshold"]  # borderline, needs review
+    match_threshold = config["match_threshold"]
+    low_confidence_threshold = config["low_confidence_threshold"]
 
     captured_at = datetime.now(timezone.utc).isoformat()
-    student_ids, candidate_embeddings = fetch_candidate_embeddings(institution_id)
+    student_ids, candidate_embeddings = fetch_candidate_embeddings(institution_id, session_id)
 
     faces = provider.detect(frame)
     if not faces:
         log_observation(institution_id, session_id, None, captured_at,
-                         None, None, "no_face")
+                         None, None, "no_face", evidence_photo_url=frame_path)
         return {"faces_detected": 0, "results": []}
 
     results = []
@@ -28,7 +28,7 @@ def process_frame(frame, institution_id: str, session_id: str):
 
         if quality < quality_threshold:
             log_observation(institution_id, session_id, None, captured_at,
-                             None, quality, "poor_quality")
+                             None, quality, "poor_quality", evidence_photo_url=frame_path)
             results.append({"match_status": "poor_quality", "quality": quality})
             continue
 
@@ -37,7 +37,7 @@ def process_frame(frame, institution_id: str, session_id: str):
 
         if best is None:
             log_observation(institution_id, session_id, None, captured_at,
-                             None, quality, "unknown_face")
+                             None, quality, "unknown_face", evidence_photo_url=frame_path)
             results.append({"match_status": "unknown_face"})
             continue
 
@@ -46,13 +46,13 @@ def process_frame(frame, institution_id: str, session_id: str):
         if best.distance <= match_threshold:
             status = "matched"
         elif best.distance <= low_confidence_threshold:
-            status = "low_confidence"  # surfaced to a human, not guessed
+            status = "low_confidence"
         else:
             status = "unknown_face"
-            matched_student_id = None  # too far to even suggest a guess
+            matched_student_id = None
 
         log_observation(institution_id, session_id, matched_student_id, captured_at,
-                         best.similarity, quality, status)
+                         best.similarity, quality, status, evidence_photo_url=frame_path)
         results.append({"match_status": status, "student_id": matched_student_id,
                          "similarity": best.similarity})
 
