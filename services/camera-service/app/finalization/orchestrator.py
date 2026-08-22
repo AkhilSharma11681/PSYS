@@ -2,21 +2,16 @@ from datetime import datetime, timezone
 from app.db.client import get_client
 from app.finalization.boundaries import detect_session_boundaries
 from app.finalization.gap_check import compute_student_presence
+from app.finalization.exceptions import fetch_exception_windows_by_student
 
 
 def finalize_session(session_id: str) -> dict:
-    """Top-level Phase E entry point (spec Section 5).
+    """Top-level Phase E entry point (spec Section 5). Idempotency guard
+    first -- an atomic update on finalized_at claims the job; no row back
+    means another worker/retry already has it, exit immediately.
 
-    Idempotency guard first, exactly as spec describes: a single atomic
-    update on finalized_at claims the job. If no row comes back, another
-    worker (or a retry) already claimed it -- exit immediately, no
-    recompute, no duplicate side effects.
-
-    NOTE: final_attendance table doesn't exist in the DB yet (teammate's
-    schema is pending the Phase 5 call) -- this returns computed results
-    instead of persisting them. Once the table lands, replace the final
-    return with an insert loop.
-    """
+    NOTE: final_attendance table doesn't exist yet (teammate's schema
+    pending) -- returns computed results instead of persisting them."""
     client = get_client()
 
     claim = (client.table("class_sessions")
@@ -41,11 +36,13 @@ def finalize_session(session_id: str) -> dict:
     roster = client.rpc("derive_session_roster", {"p_session_id": session_id}).execute()
     student_ids = [row["student_id"] for row in roster.data]
 
+    exceptions_by_student = fetch_exception_windows_by_student(session_id)
+
     results = []
     for student_id in student_ids:
         presence = compute_student_presence(
             session_id, student_id, boundaries["actual_start"], boundaries["actual_end"],
-            exception_windows=[],  # stub -- wire in get_session_exceptions() once ready
+            exception_windows=exceptions_by_student.get(student_id, []),
         )
         results.append({"student_id": student_id, **presence})
 
