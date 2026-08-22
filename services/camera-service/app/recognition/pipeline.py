@@ -21,7 +21,7 @@ def process_frame(frame, institution_id: str, session_id: str, frame_path: str =
 
     faces = provider.detect(frame)
     if not faces:
-        log_observation(institution_id, session_id, None, captured_at, None, None, "no_face",
+        log_observation(institution_id, session_id, None, captured_at, None, provider.frame_quality(frame), "no_face",
                          evidence_photo_url=frame_path)
         return {"faces_detected": 0, "results": []}
 

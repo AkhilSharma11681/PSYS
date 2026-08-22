@@ -21,6 +21,7 @@ class MatchResult:
 class FaceRecognitionProvider:
     def detect(self, frame) -> list[FaceBox]: ...
     def quality(self, frame, face_box: FaceBox) -> float: ...
+    def frame_quality(self, frame) -> float: ...
     def embed(self, frame, face_box: FaceBox) -> list[float]: ...
     def match(self, embedding, candidate_embeddings, threshold: float = 0.4) -> MatchResult: ...
 
@@ -48,18 +49,9 @@ class DlibFaceRecognitionProvider(FaceRecognitionProvider):
         size_score = min(1.0, (width * height) / (150 * 150))
 
         gray = cv2.cvtColor(crop, cv2.COLOR_RGB2GRAY)
-
-        # Blur: variance of the Laplacian. Sharp edges produce high
-        # variance; blur smooths edges out and collapses it toward 0.
-        # 100 is an empirical "acceptably sharp" floor from webcam
-        # testing, not a theoretical constant — revisit if false
-        # poor_quality rejections show up in production logs.
         laplacian_var = cv2.Laplacian(gray, cv2.CV_64F).var()
         blur_score = min(1.0, laplacian_var / 100.0)
 
-        # Lighting: mean brightness should sit in a usable mid-range.
-        # Underexposed or blown-out crops both degrade embedding
-        # quality even when the face is sharp and well-sized.
         mean_brightness = float(np.mean(gray))
         if mean_brightness < 40:
             brightness_score = mean_brightness / 40.0
@@ -69,6 +61,32 @@ class DlibFaceRecognitionProvider(FaceRecognitionProvider):
             brightness_score = 1.0
 
         return max(0.0, min(size_score, blur_score, brightness_score))
+
+    def frame_quality(self, frame) -> float:
+        """Face-independent version of quality() -- for frames where NO
+        face was detected. Lets gap-check (spec step 9) tell apart a
+        clean, well-lit frame that genuinely had no one in it from a
+        frame degraded enough that a real face could have been missed.
+        Same blur/brightness math as quality(), no face-size component
+        since there's no face box in this case."""
+        import cv2
+
+        if frame.size == 0:
+            return 0.0
+
+        gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+        laplacian_var = cv2.Laplacian(gray, cv2.CV_64F).var()
+        blur_score = min(1.0, laplacian_var / 100.0)
+
+        mean_brightness = float(np.mean(gray))
+        if mean_brightness < 40:
+            brightness_score = mean_brightness / 40.0
+        elif mean_brightness > 220:
+            brightness_score = max(0.0, (255 - mean_brightness) / 35.0)
+        else:
+            brightness_score = 1.0
+
+        return max(0.0, min(blur_score, brightness_score))
 
     def embed(self, frame, face_box: FaceBox) -> list[float]:
         location = (face_box.top, face_box.right, face_box.bottom, face_box.left)
@@ -99,7 +117,7 @@ class BestMatch:
 
 
 def find_best_match(provider, embedding, candidate_embeddings):
-    """Returns raw distance/similarity without applying any threshold —
+    """Returns raw distance/similarity without applying any threshold --
     the caller decides matched/low_confidence/unknown based on its own
     config (spec: thresholds live in attendance_config, not hardcoded)."""
     import face_recognition
