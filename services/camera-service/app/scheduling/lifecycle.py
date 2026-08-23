@@ -5,39 +5,48 @@ from app.scheduling.generate_sessions import generate_due_sessions
 from app.finalization.orchestrator import finalize_session
 from scheduler import schedule_capture_jobs
 
+PRODUCTION_INTERVAL_MIN_SEC = 5 * 60   # spec default: 5-8 minutes between captures
+PRODUCTION_INTERVAL_MAX_SEC = 8 * 60
+
 
 def run_tick(now: datetime | None = None) -> dict:
-    """One tick of the full session lifecycle, meant to run on a short
-    interval (e.g. every 2-5 min via cron). Ties together three pieces
-    that previously had no automatic glue between them:
+    """One tick of the full session lifecycle (cron-style, every 2-5 min).
 
     1. generate_due_sessions() -- create sessions whose recurrence is due
-    2. scheduled -> in_progress -- start capture-job scheduling for
-       sessions whose start time has arrived
-    3. in_progress -> completed -- finalize sessions past their
-       scheduled_end + capture_buffer_minutes
-
-    Every step is individually idempotent (existing functions already
-    guarantee this), so a tick can safely overlap or retry.
+    2. scheduled -> in_progress -- capture starts capture_buffer_minutes
+       BEFORE scheduled_start (spec Phase D: catches a late start), using
+       production interval defaults (5-8 min), not the fast test config
+    3. in_progress -> completed -- finalize sessions past scheduled_end
+       + capture_buffer_minutes
     """
     now = now or datetime.now(timezone.utc)
     client = get_client()
 
     generated = generate_due_sessions(now)
 
-    starting = (client.table("class_sessions").select("*")
-                .eq("status", "scheduled")
-                .lte("scheduled_start", now.isoformat())
-                .execute())
+    scheduled = client.table("class_sessions").select("*").eq("status", "scheduled").execute()
     started = []
-    for s in starting.data:
+    for s in scheduled.data:
+        if not s.get("scheduled_start"):
+            continue  # data-quality gap -- skip rather than crash the whole tick
+        config = get_recognition_config(s["institution_id"])
+        buffer_minutes = config["capture_buffer_minutes"]
+        capture_start_cutoff = datetime.fromisoformat(s["scheduled_start"]) - timedelta(minutes=buffer_minutes)
+
+        if now < capture_start_cutoff:
+            continue
+
         client.table("class_sessions").update({"status": "in_progress"}).eq("id", s["id"]).execute()
         started.append(s["id"])
         if s.get("camera_id"):
             duration_seconds = (
                 datetime.fromisoformat(s["scheduled_end"]) - datetime.fromisoformat(s["scheduled_start"])
-            ).total_seconds() + 1800  # + buffer on both sides, matches capture_buffer_minutes default
-            schedule_capture_jobs(s["institution_id"], s["id"], s["camera_id"], duration_seconds)
+            ).total_seconds() + (2 * buffer_minutes * 60)
+            schedule_capture_jobs(
+                s["institution_id"], s["id"], s["camera_id"], duration_seconds,
+                interval_min_sec=PRODUCTION_INTERVAL_MIN_SEC,
+                interval_max_sec=PRODUCTION_INTERVAL_MAX_SEC,
+            )
 
     in_progress = client.table("class_sessions").select("*").eq("status", "in_progress").execute()
     finalized = []
