@@ -7,6 +7,7 @@ import numpy as np
 from app.workers.capture_worker import run_capture_job
 from app.recognition.provider import DlibFaceRecognitionProvider
 from app.finalization.orchestrator import finalize_session
+from app.finalization.review import get_review_queue
 
 app = FastAPI(title="PSYS Camera Service")
 embed_provider = DlibFaceRecognitionProvider()
@@ -55,12 +56,16 @@ async def internal_embed(file: UploadFile = File(...)):
 
 @app.post("/sessions/{session_id}/finalize")
 def finalize(session_id: str):
-    """Spec Phase E entry point. Idempotent -- safe to call multiple times
-    or retry; already_finalized short-circuits without recompute.
-    NOTE: doesn't persist to final_attendance yet (table pending teammate's
-    Phase 5 schema) -- returns computed results in the response instead."""
     try:
         result = finalize_session(session_id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     return result
+
+
+@app.get("/sessions/{session_id}/review")
+def review(session_id: str):
+    """Spec Phase F data source: flagged (uncertain/camera_issue) students
+    for this session, with their evidence photos, for the teacher
+    dashboard to render."""
+    return {"session_id": session_id, "flagged": get_review_queue(session_id)}
