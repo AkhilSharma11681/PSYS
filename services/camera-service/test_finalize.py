@@ -23,9 +23,15 @@ client.table("class_sessions").update({
 client.table("class_enrollments").insert({
     "institution_id": INSTITUTION_ID, "class_id": CLASS_ID, "student_id": STUDENT_A, "status": "active",
 }).execute()
-client.table("attendance_config").upsert({
-    "institution_id": INSTITUTION_ID, "min_quorum_count": 1, "quorum_fraction": 0.3, "is_active": True,
-}).execute()
+_existing_config = client.table("attendance_config").select("id").eq("institution_id", INSTITUTION_ID).execute()
+if _existing_config.data:
+    client.table("attendance_config").update({
+        "min_quorum_count": 1, "quorum_fraction": 0.3, "is_active": True,
+    }).eq("institution_id", INSTITUTION_ID).execute()
+else:
+    client.table("attendance_config").insert({
+        "institution_id": INSTITUTION_ID, "min_quorum_count": 1, "quorum_fraction": 0.3, "is_active": True,
+    }).execute()
 
 base = datetime.now(timezone.utc)
 for m in [0, 5, 10]:
