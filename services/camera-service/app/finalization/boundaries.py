@@ -44,31 +44,33 @@ def detect_session_boundaries(session_id: str) -> dict:
     qualifying_rounds = sorted(ts for ts, students in rounds.items() if len(students) >= threshold)
 
     if not qualifying_rounds:
+        # quorum failure is a "needs a human to look at this" signal, distinct
+        # from camera_status which reflects genuine live camera_health --
+        # a quorum miss doesn't necessarily mean the camera was offline
+        # (spec discussion with teammate, processing_status carries this now)
         return {
             "actual_start": scheduled_start,
             "actual_end": scheduled_end,
             "quorum_reached": False,
-            "camera_status": "offline",
+            "processing_status": "needs_review",
         }
 
     return {
         "actual_start": qualifying_rounds[0],
         "actual_end": qualifying_rounds[-1],
         "quorum_reached": True,
-        "camera_status": "healthy",
+        "processing_status": "finalized",
     }
 
 
 def finalize_session_boundaries(session_id: str) -> dict:
     """Writes Step 0's result to class_sessions. Does NOT set finalized_at --
-    that guard belongs to the FULL finalize (gap-check + final_attendance),
-    which depends on teammate's session_exceptions, pending the Phase 5 call.
-    This is intentionally partial."""
+    that guard belongs to the FULL finalize (gap-check + final_attendance)."""
     client = get_client()
     result = detect_session_boundaries(session_id)
     client.table("class_sessions").update({
         "actual_start": result["actual_start"],
         "actual_end": result["actual_end"],
-        "camera_status": result["camera_status"],
+        "processing_status": result["processing_status"],
     }).eq("id", session_id).execute()
     return result

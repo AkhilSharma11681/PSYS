@@ -27,7 +27,7 @@ def finalize_session(session_id: str) -> dict:
     client.table("class_sessions").update({
         "actual_start": boundaries["actual_start"],
         "actual_end": boundaries["actual_end"],
-        "camera_status": boundaries["camera_status"],
+        "processing_status": boundaries["processing_status"],
     }).eq("id", session_id).execute()
 
     if not boundaries["quorum_reached"]:
