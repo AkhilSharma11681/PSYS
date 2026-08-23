@@ -70,3 +70,32 @@ print("  PASS")
 
 client.table("attendance_observations").delete().eq("session_id", SESSION_ID).execute()
 print("\nAll gap-check tests passed")
+
+# --- NEW: camera_issue case ---
+from app.finalization.gap_check import compute_student_presence as _recompute
+CAMERA_ID = "fa955acb-1b5b-4330-83c1-e10f3fa11810"
+
+client.table("attendance_observations").delete().eq("session_id", SESSION_ID).eq("student_id", STUDENT_B).execute()
+client.table("capture_events").delete().eq("session_id", SESSION_ID).execute()
+
+for m in [0, 5]:
+    insert_obs(STUDENT_B, m, "matched")
+
+# Simulate the camera genuinely failing during the gap window (10-25 min)
+for m in [10, 15, 20, 25]:
+    client.table("capture_events").insert({
+        "institution_id": INSTITUTION_ID, "session_id": SESSION_ID, "camera_id": CAMERA_ID,
+        "attempted_at": (base + timedelta(minutes=m)).isoformat(),
+        "succeeded": False, "error": "could_not_open_stream", "frame_stored": False,
+    }).execute()
+    # note: no attendance_observations row for these -- camera failed before
+    # recognition could even run, so there's genuinely nothing to log there
+
+result_e = _recompute(SESSION_ID, STUDENT_B, actual_start, actual_end)
+print("Student B (camera failed during gap):", result_e)
+assert result_e["status"] == "camera_issue", f"expected camera_issue, got {result_e}"
+print("  PASS")
+
+client.table("capture_events").delete().eq("session_id", SESSION_ID).execute()
+client.table("attendance_observations").delete().eq("session_id", SESSION_ID).execute()
+print("\nAll gap-check tests (including camera_issue) passed")
