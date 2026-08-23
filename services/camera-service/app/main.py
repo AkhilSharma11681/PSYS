@@ -1,5 +1,6 @@
 import io
 from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from PIL import Image
 import numpy as np
@@ -8,6 +9,7 @@ from app.workers.capture_worker import run_capture_job
 from app.recognition.provider import DlibFaceRecognitionProvider
 from app.finalization.orchestrator import finalize_session
 from app.finalization.review import get_review_queue
+from app.reporting.export import export_session_csv
 
 app = FastAPI(title="PSYS Camera Service")
 embed_provider = DlibFaceRecognitionProvider()
@@ -65,7 +67,14 @@ def finalize(session_id: str):
 
 @app.get("/sessions/{session_id}/review")
 def review(session_id: str):
-    """Spec Phase F data source: flagged (uncertain/camera_issue) students
-    for this session, with their evidence photos, for the teacher
-    dashboard to render."""
     return {"session_id": session_id, "flagged": get_review_queue(session_id)}
+
+
+@app.get("/sessions/{session_id}/export.csv")
+def export_csv(session_id: str):
+    csv_content = export_session_csv(session_id)
+    return StreamingResponse(
+        iter([csv_content]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=session_{session_id}.csv"},
+    )
