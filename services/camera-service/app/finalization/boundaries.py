@@ -53,6 +53,7 @@ def detect_session_boundaries(session_id: str) -> dict:
             "actual_end": scheduled_end,
             "quorum_reached": False,
             "processing_status": "needs_review",
+            "institution_id": institution_id,
         }
 
     return {
@@ -60,6 +61,7 @@ def detect_session_boundaries(session_id: str) -> dict:
         "actual_end": qualifying_rounds[-1],
         "quorum_reached": True,
         "processing_status": "finalized",
+        "institution_id": institution_id,
     }
 
 
