@@ -96,3 +96,30 @@ never crashes the worker — it's marked failed and the worker keeps going.
 - test_storage.py — verifies frame upload to Supabase Storage against your Mac's live webcam
 - enroll_test_student.py — enrolls a test student for match testing
 - debug_compare.py — compares two photos' embeddings/quality directly
+
+## ⚠️ KNOWN GAP: No auth / tenant-isolation on HTTP endpoints
+
+None of the endpoints (`/sessions/{id}/finalize`, `/review`, `/export.csv`)
+verify that the caller has access to the institution that `session_id`
+belongs to. The DB client uses the `service_role` key (bypasses RLS by
+design, since this is a trusted backend), so this isolation MUST happen
+at the application layer -- and currently doesn't.
+
+This is acceptable ONLY because:
+- Single-institution pilot (no real multi-tenant exposure risk yet)
+- Auth is entirely unimplemented across the project (teammate's
+  `apps/web` also hardcodes `DEV_INSTITUTION_ID`, no real login yet)
+
+**Before any multi-institution deployment**, this needs:
+1. Real auth (Supabase Auth JWT, per spec Section 2) wired into every
+   HTTP endpoint here
+2. Each endpoint verifying `session.institution_id` (or `camera.institution_id`)
+   matches the authenticated caller's institution before proceeding
+3. `run_capture_job()` already has the pattern for this (checks
+   `camera.institution_id == session.institution_id`) -- but that's a
+   cross-object consistency check, not an auth check. Both are needed.
+
+Do NOT add a cosmetic/partial check here without real auth backing it --
+that would create a false sense of security without closing the gap.
+Coordinate with teammate before starting this (shared concern, not
+camera-service-only).
