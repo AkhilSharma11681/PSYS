@@ -1,0 +1,9 @@
+venv/
+__pycache__/
+*.pyc
+.env
+.DS_Store
+test_*.py
+test_*.jpg
+debug_*.py
+enroll_test_student.py
