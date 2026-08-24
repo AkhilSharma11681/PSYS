@@ -1,4 +1,5 @@
 import io
+import os
 from fastapi import FastAPI, HTTPException, UploadFile, File, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -14,6 +15,7 @@ from app.finalization.orchestrator import finalize_session
 from app.finalization.review import get_review_queue
 from app.finalization.disputes import create_dispute, resolve_dispute
 from app.reporting.export import export_session_csv
+from app.scheduling.lifecycle import run_tick
 
 limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(title="PSYS Camera Service")
@@ -119,6 +121,7 @@ def submit_dispute(request: Request, body: DisputeRequest):
         raise HTTPException(status_code=400, detail=str(e))
     return result
 
+
 class ResolveDisputeRequest(BaseModel):
     status: str
     resolved_status_for_attendance: str | None = None
@@ -132,3 +135,19 @@ def resolve_dispute_endpoint(request: Request, dispute_id: str, body: ResolveDis
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return result
+
+
+@app.post("/tick")
+@limiter.limit("30/minute")
+def tick(request: Request):
+    """Free-tier alternative to a dedicated Background Worker: an
+    external free scheduler (e.g. cron-job.org) hits this endpoint
+    every few minutes instead of a continuously-running process paying
+    for Render's Starter tier. Same run_tick() logic either way.
+    Gated by a shared secret -- this is NOT real auth (see SETUP.md's
+    documented auth gap), just enough to stop random internet traffic
+    from triggering real DB writes on a guessable URL."""
+    expected = os.environ.get("TICK_SECRET")
+    if not expected or request.headers.get("X-Tick-Secret") != expected:
+        raise HTTPException(status_code=403, detail="forbidden")
+    return run_tick()
