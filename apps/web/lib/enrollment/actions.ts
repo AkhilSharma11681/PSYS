@@ -123,6 +123,23 @@ export async function updateStudent(studentId: string, formData: FormData) {
     throw new Error(`Failed to update student: ${error.message}`)
   }
 
+  // Spec Section 9 (Privacy & Biometric Data Lifecycle): "when a student
+  // leaves the institution, their student_biometrics row is deleted."
+  // Scoped to graduated/transferred only -- NOT inactive, which the
+  // students table comment defines as "semester break" (temporary,
+  // student is expected to return, so their enrollment embeddings must
+  // survive). Idempotent: deleting zero matching rows is a no-op.
+  if (status === 'graduated' || status === 'transferred') {
+    const { error: biometricsError } = await supabase
+      .from('student_biometrics')
+      .delete()
+      .eq('student_id', studentId)
+
+    if (biometricsError) {
+      throw new Error(`Failed to delete biometrics: ${biometricsError.message}`)
+    }
+  }
+
   revalidatePath(`/students/${studentId}`)
   revalidatePath('/students')
 }
