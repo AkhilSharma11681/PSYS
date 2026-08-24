@@ -28,27 +28,24 @@ def _excused_overlap_minutes(gap_start: str, gap_end: str, exception_windows: li
 
 
 def _overlaps_window(range_start: str, range_end: str, windows: list[tuple]) -> bool:
+    """A single isolated capture failure produces a zero-width window
+    (window_start == window_end in camera_windows.py). Strict '<' would
+    never register that as overlapping anything -- use '<=' so an
+    isolated failure still counts as camera degradation during the gap
+    it falls inside."""
     range_start_dt = datetime.fromisoformat(range_start)
     range_end_dt = datetime.fromisoformat(range_end)
     for window_start, window_end in windows:
         w_start = datetime.fromisoformat(window_start)
         w_end = datetime.fromisoformat(window_end)
-        if max(range_start_dt, w_start) < min(range_end_dt, w_end):
+        if max(range_start_dt, w_start) <= min(range_end_dt, w_end):
             return True
     return False
 
 
 def compute_student_presence(session_id: str, student_id: str, actual_start: str, actual_end: str,
                               exception_windows: list[tuple] | None = None) -> dict:
-    """Spec Section 5, Phase E, steps 5-9. camera_issue takes priority over
-    every other verdict: a failed capture_events attempt produces NO
-    attendance_observations row, so camera failures show up as *fewer*
-    observations, not bad ones -- meaning they can trip the
-    min_valid_observations floor before gap-check logic ever runs. This
-    is checked first, before the coverage floor, specifically to catch
-    that case (open question for the Phase 5 call: exact overlap
-    threshold for 'meaningful portion' -- currently any overlap counts,
-    first-pass heuristic)."""
+    """Spec Section 5, Phase E, steps 5-9."""
     exception_windows = exception_windows or []
     client = get_client()
 
@@ -77,8 +74,11 @@ def compute_student_presence(session_id: str, student_id: str, actual_start: str
     presence_score = matched_count / len(valid_obs)
 
     matched_times = [o["captured_at"] for o in valid_obs if o["match_status"] == "matched"]
-    gap_verdict = None
     boundaries = matched_times + [actual_end]
+
+    severity = {"camera_issue": 3, "uncertain": 2, "left_early": 1}
+    gap_verdict = None
+    best_severity = 0
 
     for i in range(len(boundaries) - 1):
         gap_start, gap_end = boundaries[i], boundaries[i + 1]
@@ -89,17 +89,18 @@ def compute_student_presence(session_id: str, student_id: str, actual_start: str
             continue
 
         if _overlaps_window(gap_start, gap_end, degraded_windows):
-            gap_verdict = "camera_issue"
-            break
-
-        gap_obs = [o for o in valid_obs if gap_start <= o["captured_at"] <= gap_end]
-        ambiguous = [o for o in gap_obs if o["match_status"] in ("no_face", "poor_quality")]
-        clean_evidence = all((o["quality_score"] or 0) >= config["quality_threshold"] for o in ambiguous) if ambiguous else True
-
-        if clean_evidence:
-            gap_verdict = "left_early"
+            this_verdict = "camera_issue"
         else:
-            gap_verdict = "uncertain"
+            gap_obs = [o for o in valid_obs if gap_start <= o["captured_at"] <= gap_end]
+            ambiguous = [o for o in gap_obs if o["match_status"] in ("no_face", "poor_quality")]
+            clean_evidence = all((o["quality_score"] or 0) >= config["quality_threshold"] for o in ambiguous) if ambiguous else True
+            this_verdict = "left_early" if clean_evidence else "uncertain"
+
+        if severity[this_verdict] > best_severity:
+            gap_verdict = this_verdict
+            best_severity = severity[this_verdict]
+
+        if gap_verdict == "camera_issue":
             break
 
     if gap_verdict == "camera_issue":
