@@ -48,6 +48,11 @@ export async function createStudent(formData: FormData) {
     throw new Error('Full name is required')
   }
 
+  const consentGiven = formData.get('consent_given') === 'on'
+  if (!consentGiven) {
+    throw new Error('Consent must be given before enrollment (spec Section 9)')
+  }
+
   const supabase = createAdminClient()
 
   const { data: student, error: studentError } = await supabase
@@ -57,6 +62,8 @@ export async function createStudent(formData: FormData) {
       full_name: fullName,
       roll_number: rollNumber || null,
       status: 'active',
+      consent_given: true,
+      consent_recorded_at: new Date().toISOString(),
     })
     .select()
     .single()
