@@ -11,6 +11,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 COPY requirements.txt .
+
+# dlib's cmake build defaults to using all available cores in parallel,
+# each consuming significant memory -- this exceeds Render's free-tier
+# build machine limits (8GB+ used, build killed with OOM). Forcing a
+# single-threaded build trades build speed for staying within memory
+# limits. Also pip installs one-at-a-time (--no-build-isolation off by
+# default is fine, this is purely about parallel compile jobs).
+ENV CMAKE_BUILD_PARALLEL_LEVEL=1
+ENV MAKEFLAGS="-j1"
 RUN pip install --no-cache-dir -r requirements.txt
 
 # face_recognition depends on face_recognition_models, but the PyPI
