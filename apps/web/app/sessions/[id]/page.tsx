@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { markPermittedExit, recordReturn } from '@/lib/enrollment/exceptions'
-import { fileDispute } from '@/lib/enrollment/disputes'
+import { fileDispute, resolveDispute } from '@/lib/enrollment/disputes'
 
 const CAMERA_SERVICE_URL = process.env.CAMERA_SERVICE_URL || 'http://localhost:8000'
 
@@ -47,10 +47,12 @@ export default async function SessionDetailPage({
 
   const { data: existingDisputes } = await supabase
     .from('disputes')
-    .select('final_attendance_id, status')
+    .select('id, final_attendance_id, status')
     .in('final_attendance_id', finalAttendance?.map((f) => f.id) || [])
 
-  const disputedIds = new Set(existingDisputes?.map((d) => d.final_attendance_id))
+  const disputeByAttendanceId = new Map(
+    existingDisputes?.map((d) => [d.final_attendance_id, d]) || []
+  )
 
   const markExit = markPermittedExit.bind(null, id)
 
@@ -109,29 +111,78 @@ export default async function SessionDetailPage({
                   {f.presence_score != null && ` (${(f.presence_score * 100).toFixed(0)}%)`}
                   {f.exception_applied && ' · exception applied'}
                 </div>
-                {disputedIds.has(f.id) ? (
-                  <span className="text-sm text-gray-400">dispute filed</span>
-                ) : (
-                  <details className="text-sm">
-                    <summary className="cursor-pointer underline">File dispute</summary>
-                    <form
-                      action={fileDispute.bind(null, f.id, id, f.student_id)}
-                      className="flex items-center gap-2 mt-2"
-                    >
-                      <input
-                        name="reason"
-                        placeholder="Reason"
-                        className="border rounded-md px-2 py-1 text-sm"
-                      />
-                      <button
-                        type="submit"
-                        className="bg-black text-white px-3 py-1 rounded-md text-sm"
-                      >
-                        Submit
-                      </button>
-                    </form>
-                  </details>
-                )}
+                {(() => {
+                  const dispute = disputeByAttendanceId.get(f.id) as any
+                  if (!dispute) {
+                    return (
+                      <details className="text-sm">
+                        <summary className="cursor-pointer underline">File dispute</summary>
+                        <form
+                          action={fileDispute.bind(null, f.id, id, f.student_id)}
+                          className="flex items-center gap-2 mt-2"
+                        >
+                          <input
+                            name="reason"
+                            placeholder="Reason"
+                            className="border rounded-md px-2 py-1 text-sm"
+                          />
+                          <button
+                            type="submit"
+                            className="bg-black text-white px-3 py-1 rounded-md text-sm"
+                          >
+                            Submit
+                          </button>
+                        </form>
+                      </details>
+                    )
+                  }
+                  if (dispute.status === 'pending') {
+                    return (
+                      <details className="text-sm">
+                        <summary className="cursor-pointer underline text-amber-700">
+                          Resolve dispute
+                        </summary>
+                        <form
+                          action={resolveDispute.bind(null, dispute.id, id)}
+                          className="flex flex-col gap-2 mt-2 items-start"
+                        >
+                          <select
+                            name="resolved_status_for_attendance"
+                            className="border rounded-md px-2 py-1 text-sm"
+                          >
+                            <option value="">Keep current status</option>
+                            <option value="present">present</option>
+                            <option value="absent">absent</option>
+                            <option value="left_early">left_early</option>
+                            <option value="uncertain">uncertain</option>
+                            <option value="camera_issue">camera_issue</option>
+                          </select>
+                          <div className="flex gap-2">
+                            <button
+                              type="submit"
+                              name="status"
+                              value="approved"
+                              className="bg-black text-white px-3 py-1 rounded-md text-sm"
+                            >
+                              Approve
+                            </button>
+                            <button
+                              type="submit"
+                              name="status"
+                              value="rejected"
+                              className="border px-3 py-1 rounded-md text-sm"
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        </form>
+                      </details>
+                    )
+                  }
+                  return (
+                    <span className="text-sm text-gray-400">dispute {dispute.status}</span>
+                  )
+                })()}
               </li>
             ))}
           </ul>
