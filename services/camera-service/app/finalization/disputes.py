@@ -36,3 +36,43 @@ def create_dispute(institution_id: str, final_attendance_id: str, session_id: st
         "status": "pending",
     }).execute()
     return result.data[0]
+
+
+def resolve_dispute(dispute_id: str, new_status: str, resolved_status_for_attendance: str | None = None) -> dict:
+    """new_status: 'approved' or 'rejected'. If approved and a corrected
+    attendance status is given, final_attendance is updated too -- spec's
+    audit_logs requirement means this correction must be traceable, not
+    a silent overwrite of an already-finalized row."""
+    if new_status not in ("approved", "rejected"):
+        raise ValueError(f"invalid status: {new_status}")
+
+    from datetime import datetime, timezone
+    client = get_client()
+
+    dispute = client.table("disputes").select("*").eq("id", dispute_id).execute()
+    if not dispute.data:
+        raise ValueError("dispute not found")
+    d = dispute.data[0]
+
+    updated = client.table("disputes").update({
+        "status": new_status,
+        "resolved_at": datetime.now(timezone.utc).isoformat(),
+    }).eq("id", dispute_id).execute()
+
+    if new_status == "approved" and resolved_status_for_attendance:
+        old_row = client.table("final_attendance").select("status").eq("id", d["final_attendance_id"]).execute()
+        old_status = old_row.data[0]["status"] if old_row.data else None
+
+        client.table("final_attendance").update({
+            "status": resolved_status_for_attendance,
+        }).eq("id", d["final_attendance_id"]).execute()
+
+        client.table("audit_logs").insert({
+            "institution_id": d["institution_id"],
+            "action": "dispute_approved_attendance_corrected",
+            "entity_type": "final_attendance",
+            "entity_id": d["final_attendance_id"],
+            "metadata": {"old_status": old_status, "new_status": resolved_status_for_attendance, "dispute_id": dispute_id},
+        }).execute()
+
+    return updated.data[0]

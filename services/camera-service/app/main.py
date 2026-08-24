@@ -12,7 +12,7 @@ from app.workers.capture_worker import run_capture_job
 from app.recognition.provider import DlibFaceRecognitionProvider
 from app.finalization.orchestrator import finalize_session
 from app.finalization.review import get_review_queue
-from app.finalization.disputes import create_dispute
+from app.finalization.disputes import create_dispute, resolve_dispute
 from app.reporting.export import export_session_csv
 
 limiter = Limiter(key_func=get_remote_address)
@@ -108,4 +108,18 @@ def submit_dispute(request: Request, body: DisputeRequest):
     submission UI/workflow itself is teammate's territory."""
     result = create_dispute(body.institution_id, body.final_attendance_id,
                              body.session_id, body.student_id, body.reason)
+    return result
+
+class ResolveDisputeRequest(BaseModel):
+    status: str
+    resolved_status_for_attendance: str | None = None
+
+
+@app.post("/disputes/{dispute_id}/resolve")
+@limiter.limit("20/minute")
+def resolve_dispute_endpoint(request: Request, dispute_id: str, body: ResolveDisputeRequest):
+    try:
+        result = resolve_dispute(dispute_id, body.status, body.resolved_status_for_attendance)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     return result
