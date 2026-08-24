@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { DEV_INSTITUTION_ID } from '@/lib/constants'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { checkRateLimit } from '@/lib/rate-limit'
 
 async function uploadPhotoAndQueueJob(
   supabase: ReturnType<typeof createAdminClient>,
@@ -37,6 +38,8 @@ async function uploadPhotoAndQueueJob(
 }
 
 export async function createStudent(formData: FormData) {
+  checkRateLimit(`createStudent:${DEV_INSTITUTION_ID}`, 20, 60_000)
+
   const fullName = (formData.get('full_name') as string)?.trim()
   const rollNumber = (formData.get('roll_number') as string)?.trim()
   const photo = formData.get('photo') as File | null
@@ -71,6 +74,8 @@ export async function createStudent(formData: FormData) {
 }
 
 export async function addEnrollmentPhoto(studentId: string, formData: FormData) {
+  checkRateLimit(`addEnrollmentPhoto:${DEV_INSTITUTION_ID}`, 30, 60_000)
+
   const photo = formData.get('photo') as File | null
 
   if (!photo || photo.size === 0) {

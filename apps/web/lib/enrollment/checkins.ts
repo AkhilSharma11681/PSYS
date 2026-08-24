@@ -3,6 +3,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { DEV_INSTITUTION_ID } from '@/lib/constants'
 import { revalidatePath } from 'next/cache'
+import { checkRateLimit } from '@/lib/rate-limit'
 
 // Very small CSV parser: expects a header row, comma-separated, no
 // embedded commas/quotes in values. Good enough for a device export of
@@ -24,6 +25,8 @@ function parseCsv(text: string): Record<string, string>[] {
 }
 
 export async function importCheckins(formData: FormData) {
+  checkRateLimit(`importCheckins:${DEV_INSTITUTION_ID}`, 5, 60_000)
+
   const file = formData.get('file') as File | null
 
   if (!file || file.size === 0) {
