@@ -8,7 +8,7 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
-from app.workers.capture_worker import run_capture_job
+from app.workers.capture_worker import run_capture_job, TenantMismatchError, SessionNotActiveError
 from app.recognition.provider import DlibFaceRecognitionProvider
 from app.finalization.orchestrator import finalize_session
 from app.finalization.review import get_review_queue
@@ -37,6 +37,10 @@ class SessionRequest(BaseModel):
 def capture_and_recognize(request: Request, camera_id: str, body: SessionRequest):
     try:
         result = run_capture_job(camera_id, body.session_id)
+    except TenantMismatchError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except SessionNotActiveError as e:
+        raise HTTPException(status_code=409, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     return result
