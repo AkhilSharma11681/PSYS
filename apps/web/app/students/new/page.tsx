@@ -29,6 +29,19 @@ export default function NewStudentPage() {
             className="w-full text-sm"
           />
         </div>
+        <div className="flex items-start gap-2">
+          <input
+            type="checkbox"
+            name="consent_given"
+            id="consent_given"
+            required
+            className="mt-1"
+          />
+          <label htmlFor="consent_given" className="text-sm text-gray-600">
+            Student has been informed and has given consent for biometric
+            enrollment (face photo, embedding), per institutional policy.
+          </label>
+        </div>
         <button
           type="submit"
           className="bg-black text-white px-4 py-2 rounded-md text-sm"

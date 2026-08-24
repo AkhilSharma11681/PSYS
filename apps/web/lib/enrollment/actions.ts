@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { DEV_INSTITUTION_ID } from '@/lib/constants'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { checkRateLimit } from '@/lib/rate-limit'
 
 async function uploadPhotoAndQueueJob(
   supabase: ReturnType<typeof createAdminClient>,
@@ -37,12 +38,19 @@ async function uploadPhotoAndQueueJob(
 }
 
 export async function createStudent(formData: FormData) {
+  checkRateLimit(`createStudent:${DEV_INSTITUTION_ID}`, 20, 60_000)
+
   const fullName = (formData.get('full_name') as string)?.trim()
   const rollNumber = (formData.get('roll_number') as string)?.trim()
   const photo = formData.get('photo') as File | null
 
   if (!fullName) {
     throw new Error('Full name is required')
+  }
+
+  const consentGiven = formData.get('consent_given') === 'on'
+  if (!consentGiven) {
+    throw new Error('Consent must be given before enrollment (spec Section 9)')
   }
 
   const supabase = createAdminClient()
@@ -54,6 +62,8 @@ export async function createStudent(formData: FormData) {
       full_name: fullName,
       roll_number: rollNumber || null,
       status: 'active',
+      consent_given: true,
+      consent_recorded_at: new Date().toISOString(),
     })
     .select()
     .single()
@@ -71,6 +81,8 @@ export async function createStudent(formData: FormData) {
 }
 
 export async function addEnrollmentPhoto(studentId: string, formData: FormData) {
+  checkRateLimit(`addEnrollmentPhoto:${DEV_INSTITUTION_ID}`, 30, 60_000)
+
   const photo = formData.get('photo') as File | null
 
   if (!photo || photo.size === 0) {
@@ -121,6 +133,23 @@ export async function updateStudent(studentId: string, formData: FormData) {
 
   if (error) {
     throw new Error(`Failed to update student: ${error.message}`)
+  }
+
+  // Spec Section 9 (Privacy & Biometric Data Lifecycle): "when a student
+  // leaves the institution, their student_biometrics row is deleted."
+  // Scoped to graduated/transferred only -- NOT inactive, which the
+  // students table comment defines as "semester break" (temporary,
+  // student is expected to return, so their enrollment embeddings must
+  // survive). Idempotent: deleting zero matching rows is a no-op.
+  if (status === 'graduated' || status === 'transferred') {
+    const { error: biometricsError } = await supabase
+      .from('student_biometrics')
+      .delete()
+      .eq('student_id', studentId)
+
+    if (biometricsError) {
+      throw new Error(`Failed to delete biometrics: ${biometricsError.message}`)
+    }
   }
 
   revalidatePath(`/students/${studentId}`)
