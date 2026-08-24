@@ -12,6 +12,7 @@ from app.workers.capture_worker import run_capture_job
 from app.recognition.provider import DlibFaceRecognitionProvider
 from app.finalization.orchestrator import finalize_session
 from app.finalization.review import get_review_queue
+from app.finalization.disputes import create_dispute
 from app.reporting.export import export_session_csv
 
 limiter = Limiter(key_func=get_remote_address)
@@ -90,3 +91,21 @@ def export_csv(request: Request, session_id: str):
         media_type="text/csv",
         headers={"Content-Disposition": f"attachment; filename=session_{session_id}.csv"},
     )
+
+
+class DisputeRequest(BaseModel):
+    institution_id: str
+    final_attendance_id: str
+    session_id: str
+    student_id: str
+    reason: str | None = None
+
+
+@app.post("/disputes")
+@limiter.limit("10/minute")
+def submit_dispute(request: Request, body: DisputeRequest):
+    """Camera-service's Phase 7 scope: auto-attaches evidence, the
+    submission UI/workflow itself is teammate's territory."""
+    result = create_dispute(body.institution_id, body.final_attendance_id,
+                             body.session_id, body.student_id, body.reason)
+    return result
