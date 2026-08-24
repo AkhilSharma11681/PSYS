@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { addEnrollmentPhoto, updateStudent } from '@/lib/enrollment/actions'
+import { addEnrollmentPhoto, updateStudent, confirmConsent } from '@/lib/enrollment/actions'
 
 export default async function StudentDetailPage({
   params,
@@ -35,6 +35,7 @@ export default async function StudentDetailPage({
 
   const addPhoto = addEnrollmentPhoto.bind(null, id)
   const editStudent = updateStudent.bind(null, id)
+  const doConfirmConsent = confirmConsent.bind(null, id)
 
   return (
     <div className="p-8 max-w-2xl mx-auto">
@@ -43,6 +44,27 @@ export default async function StudentDetailPage({
       </Link>
 
       <h1 className="text-2xl font-semibold mt-2 mb-6">{student.full_name}</h1>
+
+      {student.consent_given ? (
+        <p className="text-sm text-green-700 mb-4">
+          Consent confirmed{student.consent_recorded_at
+            ? ` on ${new Date(student.consent_recorded_at).toLocaleDateString()}`
+            : ''}.
+        </p>
+      ) : (
+        <form action={doConfirmConsent} className="mb-6">
+          <p className="text-sm text-amber-600 mb-2">
+            No consent on record for this student (enrolled before consent
+            tracking was added). Confirm now if consent has been obtained.
+          </p>
+          <button
+            type="submit"
+            className="border border-amber-600 text-amber-700 px-3 py-1.5 rounded-md text-sm"
+          >
+            Confirm Consent
+          </button>
+        </form>
+      )}
 
       <h2 className="font-medium mb-2">Edit Details</h2>
       <form action={editStudent} className="space-y-3 mb-8">
