@@ -23,8 +23,23 @@ def get_best_evidence_photo(session_id: str, student_id: str) -> str | None:
 def create_dispute(institution_id: str, final_attendance_id: str, session_id: str,
                     student_id: str, reason: str | None = None) -> dict:
     """Creates a dispute row, auto-attaching the best available evidence
-    photo so the student/admin never has to manually find or upload one."""
+    photo. Enforces spec's 24-48hr dispute window (attendance_config.
+    dispute_window_hours) against final_attendance.finalized_at."""
+    from datetime import datetime, timezone
+    from app.recognition.config import get_recognition_config
     client = get_client()
+
+    fa = client.table("final_attendance").select("finalized_at").eq("id", final_attendance_id).execute()
+    if not fa.data:
+        raise ValueError("final_attendance row not found")
+
+    config = get_recognition_config(institution_id)
+    window_hours = config.get("dispute_window_hours", 48)
+    finalized_at = datetime.fromisoformat(fa.data[0]["finalized_at"])
+    hours_elapsed = (datetime.now(timezone.utc) - finalized_at).total_seconds() / 3600
+    if hours_elapsed > window_hours:
+        raise ValueError(f"dispute_window_expired: {hours_elapsed:.1f}h elapsed, window is {window_hours}h")
+
     evidence_url = get_best_evidence_photo(session_id, student_id)
 
     result = client.table("disputes").insert({

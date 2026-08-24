@@ -106,8 +106,13 @@ class DisputeRequest(BaseModel):
 def submit_dispute(request: Request, body: DisputeRequest):
     """Camera-service's Phase 7 scope: auto-attaches evidence, the
     submission UI/workflow itself is teammate's territory."""
-    result = create_dispute(body.institution_id, body.final_attendance_id,
-                             body.session_id, body.student_id, body.reason)
+    try:
+        result = create_dispute(body.institution_id, body.final_attendance_id,
+                                 body.session_id, body.student_id, body.reason)
+    except ValueError as e:
+        if "dispute_window_expired" in str(e):
+            raise HTTPException(status_code=403, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
     return result
 
 class ResolveDisputeRequest(BaseModel):
