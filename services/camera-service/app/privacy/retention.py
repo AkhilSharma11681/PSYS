@@ -9,9 +9,11 @@ def cleanup_expired_evidence_photos(institution_id: str) -> dict:
     photos: kept only long enough to support the dispute window -- a
     short, configurable retention period, then deleted.'
 
-    Deletes evidence photos whose finalize window has passed
-    (dispute_window_hours from attendance_config), then nulls the
-    evidence_photo_url column so the DB never points at a dead file.
+    Deletes evidence photos from Storage once dispute_window_hours has
+    passed, then nulls BOTH attendance_observations.evidence_photo_url
+    AND capture_events.frame_path -- they point at the same uploaded
+    file (capture_worker.py writes one frame_path to both), so nulling
+    only one leaves a dead reference in the other.
     """
     client = get_client()
 
@@ -37,14 +39,30 @@ def cleanup_expired_evidence_photos(institution_id: str) -> dict:
            .not_.is_("evidence_photo_url", "null")
            .execute())
 
+    events = (client.table("capture_events")
+              .select("id, frame_path")
+              .in_("session_id", session_ids)
+              .not_.is_("frame_path", "null")
+              .execute())
+    frame_path_to_event_ids = {}
+    for e in events.data:
+        frame_path_to_event_ids.setdefault(e["frame_path"], []).append(e["id"])
+
     deleted = 0
     errors = 0
     for row in obs.data:
+        path = row["evidence_photo_url"]
         try:
-            client.storage.from_(BUCKET).remove([row["evidence_photo_url"]])
+            client.storage.from_(BUCKET).remove([path])
             client.table("attendance_observations").update(
                 {"evidence_photo_url": None}
             ).eq("id", row["id"]).execute()
+
+            for event_id in frame_path_to_event_ids.get(path, []):
+                client.table("capture_events").update(
+                    {"frame_path": None, "frame_stored": False}
+                ).eq("id", event_id).execute()
+
             deleted += 1
         except Exception:
             errors += 1
