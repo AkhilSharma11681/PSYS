@@ -13,6 +13,14 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# face_recognition depends on face_recognition_models, but the PyPI
+# release of that package has known install issues (large model file,
+# resolution failures on newer pip/setuptools). SETUP.md documents this
+# same workaround for local dev -- installing straight from GitHub
+# avoids the broken PyPI path. Without this, the image builds fine but
+# `import face_recognition` fails at container startup.
+RUN pip install --no-cache-dir git+https://github.com/ageitgey/face_recognition_models
+
 COPY . .
 
 EXPOSE 8000
