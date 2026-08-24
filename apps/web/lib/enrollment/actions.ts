@@ -155,3 +155,25 @@ export async function updateStudent(studentId: string, formData: FormData) {
   revalidatePath(`/students/${studentId}`)
   revalidatePath('/students')
 }
+
+// Retroactive consent confirmation for students enrolled before the
+// consent-tracking feature existed. Deliberately does NOT backdate
+// consent_recorded_at -- it records the actual moment an admin confirmed
+// it, not a fabricated original-enrollment date. Spec Section 9.
+export async function confirmConsent(studentId: string) {
+  const supabase = createAdminClient()
+
+  const { error } = await supabase
+    .from('students')
+    .update({
+      consent_given: true,
+      consent_recorded_at: new Date().toISOString(),
+    })
+    .eq('id', studentId)
+
+  if (error) {
+    throw new Error(`Failed to confirm consent: ${error.message}`)
+  }
+
+  revalidatePath(`/students/${studentId}`)
+}
