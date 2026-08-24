@@ -1,5 +1,8 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { markPermittedExit, recordReturn } from '@/lib/enrollment/exceptions'
+import { fileDispute } from '@/lib/enrollment/disputes'
+
+const CAMERA_SERVICE_URL = process.env.CAMERA_SERVICE_URL || 'http://localhost:8000'
 
 export default async function SessionDetailPage({
   params,
@@ -27,22 +30,113 @@ export default async function SessionDetailPage({
         .eq('status', 'active')
     : { data: [] }
 
+  const studentName = (studentId: string) =>
+    (roster.data?.find((r: any) => r.student_id === studentId)?.students as any)?.full_name ||
+    studentId
+
   const { data: exceptions } = await supabase
     .from('session_exceptions')
     .select('id, student_id, reason, exit_at, return_at, students(full_name)')
     .eq('session_id', id)
     .order('exit_at', { ascending: false })
 
+  const { data: finalAttendance } = await supabase
+    .from('final_attendance')
+    .select('id, student_id, status, presence_score, exception_applied, students(full_name)')
+    .eq('session_id', id)
+
+  const { data: existingDisputes } = await supabase
+    .from('disputes')
+    .select('final_attendance_id, status')
+    .in('final_attendance_id', finalAttendance?.map((f) => f.id) || [])
+
+  const disputedIds = new Set(existingDisputes?.map((d) => d.final_attendance_id))
+
   const markExit = markPermittedExit.bind(null, id)
+
+  let reviewQueue: any[] = []
+  try {
+    const res = await fetch(`${CAMERA_SERVICE_URL}/sessions/${id}/review`, { cache: 'no-store' })
+    if (res.ok) {
+      const data = await res.json()
+      reviewQueue = data.flagged || []
+    }
+  } catch {
+    reviewQueue = []
+  }
 
   return (
     <div className="p-8 max-w-2xl mx-auto">
-      <h1 className="text-2xl font-semibold mb-1">
-        {(session.classes as any)?.subject || '(no class)'}
-      </h1>
+      <div className="flex items-center justify-between mb-1">
+        <h1 className="text-2xl font-semibold">
+          {(session.classes as any)?.subject || '(no class)'}
+        </h1>
+        <a href={`${CAMERA_SERVICE_URL}/sessions/${id}/export.csv`} className="text-sm underline text-gray-600">Export CSV</a>
+      </div>
       <p className="text-sm text-gray-500 mb-6">
         Status: {session.status} · Processing: {session.processing_status || '—'}
       </p>
+
+      {reviewQueue.length > 0 && (
+        <>
+          <h2 className="font-medium mb-2 text-amber-700">Needs Review ({reviewQueue.length})</h2>
+          <ul className="space-y-2 text-sm mb-8">
+            {reviewQueue.map((r: any) => (
+              <li key={r.student_id} className="border-b pb-2">
+                <span className="font-medium">{studentName(r.student_id)}</span>
+                {' — '}
+                <span className="text-amber-600">{r.status}</span>
+                {r.presence_score != null && ` (${(r.presence_score * 100).toFixed(0)}%)`}
+                {r.evidence && r.evidence.length > 0 && ` · ${r.evidence.length} evidence photo(s)`}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      {finalAttendance && finalAttendance.length > 0 && (
+        <>
+          <h2 className="font-medium mb-2">Final Attendance</h2>
+          <ul className="space-y-2 text-sm mb-8">
+            {finalAttendance.map((f: any) => (
+              <li key={f.id} className="border-b pb-2 flex items-center justify-between">
+                <div>
+                  <span className="font-medium">{f.students?.full_name}</span>
+                  {' — '}
+                  <span className={f.status === 'present' ? '' : 'text-amber-600'}>
+                    {f.status}
+                  </span>
+                  {f.presence_score != null && ` (${(f.presence_score * 100).toFixed(0)}%)`}
+                  {f.exception_applied && ' · exception applied'}
+                </div>
+                {disputedIds.has(f.id) ? (
+                  <span className="text-sm text-gray-400">dispute filed</span>
+                ) : (
+                  <details className="text-sm">
+                    <summary className="cursor-pointer underline">File dispute</summary>
+                    <form
+                      action={fileDispute.bind(null, f.id, id, f.student_id)}
+                      className="flex items-center gap-2 mt-2"
+                    >
+                      <input
+                        name="reason"
+                        placeholder="Reason"
+                        className="border rounded-md px-2 py-1 text-sm"
+                      />
+                      <button
+                        type="submit"
+                        className="bg-black text-white px-3 py-1 rounded-md text-sm"
+                      >
+                        Submit
+                      </button>
+                    </form>
+                  </details>
+                )}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
 
       <h2 className="font-medium mb-2">Mark Permitted Exit</h2>
       <p className="text-sm text-gray-500 mb-2">
