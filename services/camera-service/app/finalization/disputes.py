@@ -74,6 +74,17 @@ def resolve_dispute(dispute_id: str, new_status: str, resolved_status_for_attend
         "resolved_at": datetime.now(timezone.utc).isoformat(),
     }).eq("id", dispute_id).execute()
 
+    # Every dispute resolution is a human decision -- logged regardless
+    # of whether it also corrects final_attendance (spec: 'every status
+    # change a human makes is recorded').
+    client.table("audit_logs").insert({
+        "institution_id": d["institution_id"],
+        "action": "dispute_resolved",
+        "entity_type": "dispute",
+        "entity_id": dispute_id,
+        "metadata": {"old_status": d["status"], "new_status": new_status},
+    }).execute()
+
     if new_status == "approved" and resolved_status_for_attendance:
         old_row = client.table("final_attendance").select("status").eq("id", d["final_attendance_id"]).execute()
         old_status = old_row.data[0]["status"] if old_row.data else None
