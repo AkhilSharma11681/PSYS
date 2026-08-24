@@ -35,3 +35,26 @@ export async function fileDispute(
 
   revalidatePath(`/sessions/${sessionId}`)
 }
+
+export async function resolveDispute(
+  disputeId: string,
+  sessionId: string,
+  formData: FormData
+) {
+  const status = formData.get('status') as string
+  const resolvedStatus = (formData.get('resolved_status_for_attendance') as string) || null
+  const camaraServiceUrl = process.env.CAMERA_SERVICE_URL || 'http://localhost:8000'
+  const response = await fetch(`${camaraServiceUrl}/disputes/${disputeId}/resolve`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      status,
+      resolved_status_for_attendance: resolvedStatus || null,
+    }),
+  })
+  if (!response.ok) {
+    const errorBody = await response.text()
+    throw new Error(`Failed to resolve dispute: ${response.status} ${errorBody}`)
+  }
+  revalidatePath(`/sessions/${sessionId}`)
+}
