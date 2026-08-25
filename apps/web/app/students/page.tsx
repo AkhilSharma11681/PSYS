@@ -1,14 +1,15 @@
 import Link from 'next/link'
-import { createAdminClient } from '@/lib/supabase/admin'
-import { DEV_INSTITUTION_ID } from '@/lib/constants'
+import { createClient } from '@/lib/supabase/server'
+import { getCurrentUser } from '@/lib/auth/session'
 
 export default async function StudentsPage() {
-  const supabase = createAdminClient()
+  const user = await getCurrentUser()
+  const supabase = await createClient()
 
   const { data: students, error } = await supabase
     .from('students')
     .select('id, full_name, roll_number, status, enrollment_photo_count')
-    .eq('institution_id', DEV_INSTITUTION_ID)
+    .eq('institution_id', user.institution_id)
     .order('full_name')
 
   if (error) {

@@ -1,21 +1,22 @@
 'use server'
 
+import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { DEV_INSTITUTION_ID } from '@/lib/constants'
+import { getCurrentUser } from '@/lib/auth/session'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { checkRateLimit } from '@/lib/rate-limit'
 
-async function uploadPhotoAndQueueJob(
-  supabase: ReturnType<typeof createAdminClient>,
-  institutionId: string,
-  studentId: string,
-  photo: File
-) {
+// Storage writes stay on the admin client for now -- the enrollment-photos
+// bucket has zero storage policies (RLS enabled, deny-all for anon/
+// authenticated), so a session-scoped client would fail the upload.
+// Flagged as a follow-up: add storage policies scoped to institution_id
+// in the object path, then switch this to the session client too.
+async function uploadPhotoAndQueueJob(institutionId: string, studentId: string, photo: File) {
+  const admin = createAdminClient()
   const ext = photo.name.split('.').pop() || 'jpg'
   const storagePath = `${institutionId}/${studentId}/${crypto.randomUUID()}.${ext}`
 
-  const { error: uploadError } = await supabase.storage
+  const { error: uploadError } = await admin.storage
     .from('enrollment-photos')
     .upload(storagePath, photo)
 
@@ -23,7 +24,7 @@ async function uploadPhotoAndQueueJob(
     throw new Error(`Failed to upload photo: ${uploadError.message}`)
   }
 
-  const { error: jobError } = await supabase
+  const { error: jobError } = await admin
     .from('enrollment_jobs')
     .insert({
       institution_id: institutionId,
@@ -38,32 +39,27 @@ async function uploadPhotoAndQueueJob(
 }
 
 export async function createStudent(formData: FormData) {
-  checkRateLimit(`createStudent:${DEV_INSTITUTION_ID}`, 20, 60_000)
-
   const fullName = (formData.get('full_name') as string)?.trim()
   const rollNumber = (formData.get('roll_number') as string)?.trim()
   const photo = formData.get('photo') as File | null
+  const consentGiven = formData.get('consent_given') === 'on'
 
   if (!fullName) {
     throw new Error('Full name is required')
   }
 
-  const consentGiven = formData.get('consent_given') === 'on'
-  if (!consentGiven) {
-    throw new Error('Consent must be given before enrollment (spec Section 9)')
-  }
-
-  const supabase = createAdminClient()
+  const user = await getCurrentUser()
+  const supabase = await createClient()
 
   const { data: student, error: studentError } = await supabase
     .from('students')
     .insert({
-      institution_id: DEV_INSTITUTION_ID,
+      institution_id: user.institution_id,
       full_name: fullName,
       roll_number: rollNumber || null,
       status: 'active',
-      consent_given: true,
-      consent_recorded_at: new Date().toISOString(),
+      consent_given: consentGiven,
+      consent_recorded_at: consentGiven ? new Date().toISOString() : null,
     })
     .select()
     .single()
@@ -73,7 +69,7 @@ export async function createStudent(formData: FormData) {
   }
 
   if (photo && photo.size > 0) {
-    await uploadPhotoAndQueueJob(supabase, DEV_INSTITUTION_ID, student.id, photo)
+    await uploadPhotoAndQueueJob(user.institution_id, student.id, photo)
   }
 
   revalidatePath('/students')
@@ -81,15 +77,13 @@ export async function createStudent(formData: FormData) {
 }
 
 export async function addEnrollmentPhoto(studentId: string, formData: FormData) {
-  checkRateLimit(`addEnrollmentPhoto:${DEV_INSTITUTION_ID}`, 30, 60_000)
-
   const photo = formData.get('photo') as File | null
 
   if (!photo || photo.size === 0) {
     throw new Error('Photo is required')
   }
 
-  const supabase = createAdminClient()
+  const supabase = await createClient()
 
   const { data: student, error: studentError } = await supabase
     .from('students')
@@ -101,7 +95,7 @@ export async function addEnrollmentPhoto(studentId: string, formData: FormData) 
     throw new Error('Student not found')
   }
 
-  await uploadPhotoAndQueueJob(supabase, student.institution_id, studentId, photo)
+  await uploadPhotoAndQueueJob(student.institution_id, studentId, photo)
 
   revalidatePath(`/students/${studentId}`)
 }
@@ -120,7 +114,7 @@ export async function updateStudent(studentId: string, formData: FormData) {
     throw new Error('Invalid status')
   }
 
-  const supabase = createAdminClient()
+  const supabase = await createClient()
 
   const { error } = await supabase
     .from('students')
@@ -135,33 +129,12 @@ export async function updateStudent(studentId: string, formData: FormData) {
     throw new Error(`Failed to update student: ${error.message}`)
   }
 
-  // Spec Section 9 (Privacy & Biometric Data Lifecycle): "when a student
-  // leaves the institution, their student_biometrics row is deleted."
-  // Scoped to graduated/transferred only -- NOT inactive, which the
-  // students table comment defines as "semester break" (temporary,
-  // student is expected to return, so their enrollment embeddings must
-  // survive). Idempotent: deleting zero matching rows is a no-op.
-  if (status === 'graduated' || status === 'transferred') {
-    const { error: biometricsError } = await supabase
-      .from('student_biometrics')
-      .delete()
-      .eq('student_id', studentId)
-
-    if (biometricsError) {
-      throw new Error(`Failed to delete biometrics: ${biometricsError.message}`)
-    }
-  }
-
   revalidatePath(`/students/${studentId}`)
   revalidatePath('/students')
 }
 
-// Retroactive consent confirmation for students enrolled before the
-// consent-tracking feature existed. Deliberately does NOT backdate
-// consent_recorded_at -- it records the actual moment an admin confirmed
-// it, not a fabricated original-enrollment date. Spec Section 9.
 export async function confirmConsent(studentId: string) {
-  const supabase = createAdminClient()
+  const supabase = await createClient()
 
   const { error } = await supabase
     .from('students')

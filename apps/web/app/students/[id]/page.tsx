@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { createClient } from '@/lib/supabase/server'
 import { addEnrollmentPhoto, updateStudent, confirmConsent } from '@/lib/enrollment/actions'
 
 export default async function StudentDetailPage({
@@ -8,7 +8,7 @@ export default async function StudentDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const supabase = createAdminClient()
+  const supabase = await createClient()
 
   const { data: student } = await supabase
     .from('students')
