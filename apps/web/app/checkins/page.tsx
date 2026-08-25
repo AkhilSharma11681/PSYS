@@ -1,14 +1,15 @@
-import { createAdminClient } from '@/lib/supabase/admin'
-import { DEV_INSTITUTION_ID } from '@/lib/constants'
+import { createClient } from '@/lib/supabase/server'
+import { getCurrentUser } from '@/lib/auth/session'
 import CheckinUploadForm from '@/lib/enrollment/CheckinUploadForm'
 
 export default async function CheckinsPage() {
-  const supabase = createAdminClient()
+  const user = await getCurrentUser()
+  const supabase = await createClient()
 
   const { data: events } = await supabase
     .from('external_checkin_events')
     .select('id, external_student_ref, student_id, checked_in_at, synced_at')
-    .eq('institution_id', DEV_INSTITUTION_ID)
+    .eq('institution_id', user.institution_id)
     .order('synced_at', { ascending: false })
     .limit(50)
 
