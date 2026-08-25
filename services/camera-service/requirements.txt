@@ -10,3 +10,4 @@ setuptools<81    # face_recognition_models needs pkg_resources, removed in setup
 python-multipart
 Pillow
 slowapi
+PyJWT[crypto]
