@@ -123,3 +123,21 @@ Do NOT add a cosmetic/partial check here without real auth backing it --
 that would create a false sense of security without closing the gap.
 Coordinate with teammate before starting this (shared concern, not
 camera-service-only).
+
+## Deployment status — UPDATED
+
+- **Web Service**: deployed on Render (free tier), live at
+  https://psys-camera-service.onrender.com
+- **Autonomous lifecycle**: NOT via a dedicated Background Worker
+  (Render has no free tier for that, min $7/month). Instead:
+  - Added POST /tick endpoint (gated by TICK_SECRET shared-secret
+    header, not real auth -- see the auth-gap note above) that wraps
+    run_tick()
+  - cron-job.org (free, no credit card) hits this endpoint every 5
+    minutes
+  - This also keeps the free Web Service from spinning down on
+    inactivity (bonus side effect)
+  - Verified working end-to-end: cron-job.org shows successful runs,
+    run_tick() genuinely executes on Render
+- TICK_SECRET env var must match exactly between Render's environment
+  variables and cron-job.org's X-Tick-Secret header value
