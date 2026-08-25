@@ -21,3 +21,14 @@ export async function getCurrentUser() {
 
   return profile
 }
+
+export async function getAccessToken() {
+  const supabase = await createClient()
+  const { data: { session } } = await supabase.auth.getSession()
+
+  if (!session) {
+    redirect('/login')
+  }
+
+  return session.access_token
+}

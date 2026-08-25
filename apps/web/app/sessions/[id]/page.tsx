@@ -1,6 +1,8 @@
-import { createAdminClient } from '@/lib/supabase/admin'
+import { createClient } from '@/lib/supabase/server'
+import { getAccessToken } from '@/lib/auth/session'
 import { markPermittedExit, recordReturn } from '@/lib/enrollment/exceptions'
 import { fileDispute, resolveDispute } from '@/lib/enrollment/disputes'
+import ExportCsvButton from '@/lib/enrollment/ExportCsvButton'
 
 const CAMERA_SERVICE_URL = process.env.CAMERA_SERVICE_URL || 'http://localhost:8000'
 
@@ -10,7 +12,7 @@ export default async function SessionDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const supabase = createAdminClient()
+  const supabase = await createClient()
 
   const { data: session } = await supabase
     .from('class_sessions')
@@ -58,7 +60,11 @@ export default async function SessionDetailPage({
 
   let reviewQueue: any[] = []
   try {
-    const res = await fetch(`${CAMERA_SERVICE_URL}/sessions/${id}/review`, { cache: 'no-store' })
+    const token = await getAccessToken()
+    const res = await fetch(`${CAMERA_SERVICE_URL}/sessions/${id}/review`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+      cache: 'no-store',
+    })
     if (res.ok) {
       const data = await res.json()
       reviewQueue = data.flagged || []
@@ -73,7 +79,7 @@ export default async function SessionDetailPage({
         <h1 className="text-2xl font-semibold">
           {(session.classes as any)?.subject || '(no class)'}
         </h1>
-        <a href={`${CAMERA_SERVICE_URL}/sessions/${id}/export.csv`} className="text-sm underline text-gray-600">Export CSV</a>
+        <ExportCsvButton sessionId={id} />
       </div>
       <p className="text-sm text-gray-500 mb-6">
         Status: {session.status} · Processing: {session.processing_status || '—'}
