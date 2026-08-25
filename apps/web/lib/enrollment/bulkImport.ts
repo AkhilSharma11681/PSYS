@@ -1,7 +1,7 @@
 'use server'
 
-import { createAdminClient } from '@/lib/supabase/admin'
-import { DEV_INSTITUTION_ID } from '@/lib/constants'
+import { createClient } from '@/lib/supabase/server'
+import { getCurrentUser } from '@/lib/auth/session'
 import { revalidatePath } from 'next/cache'
 import { checkRateLimit } from '@/lib/rate-limit'
 
@@ -31,7 +31,8 @@ function parseCsv(text: string): Record<string, string>[] {
 }
 
 export async function importStudents(formData: FormData) {
-  checkRateLimit(`importStudents:${DEV_INSTITUTION_ID}`, 5, 60_000)
+  const user = await getCurrentUser()
+  checkRateLimit(`importStudents:${user.institution_id}`, 5, 60_000)
 
   const file = formData.get('file') as File | null
   const consentConfirmed = formData.get('consent_confirmed') === 'on'
@@ -50,12 +51,12 @@ export async function importStudents(formData: FormData) {
     throw new Error('CSV appears empty or missing a header row')
   }
 
-  const supabase = createAdminClient()
+  const supabase = await createClient()
 
   const { data: existing } = await supabase
     .from('students')
     .select('roll_number')
-    .eq('institution_id', DEV_INSTITUTION_ID)
+    .eq('institution_id', user.institution_id)
 
   const existingRollNumbers = new Set(
     (existing || []).map((s) => s.roll_number).filter(Boolean)
@@ -79,7 +80,7 @@ export async function importStudents(formData: FormData) {
     }
 
     const { error } = await supabase.from('students').insert({
-      institution_id: DEV_INSTITUTION_ID,
+      institution_id: user.institution_id,
       full_name: fullName,
       roll_number: rollNumber,
       status: 'active',

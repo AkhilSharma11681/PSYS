@@ -1,7 +1,7 @@
 'use server'
 
-import { createAdminClient } from '@/lib/supabase/admin'
-import { DEV_INSTITUTION_ID } from '@/lib/constants'
+import { createClient } from '@/lib/supabase/server'
+import { getCurrentUser } from '@/lib/auth/session'
 import { revalidatePath } from 'next/cache'
 import { checkRateLimit } from '@/lib/rate-limit'
 
@@ -25,7 +25,8 @@ function parseCsv(text: string): Record<string, string>[] {
 }
 
 export async function importCheckins(formData: FormData) {
-  checkRateLimit(`importCheckins:${DEV_INSTITUTION_ID}`, 5, 60_000)
+  const user = await getCurrentUser()
+  checkRateLimit(`importCheckins:${user.institution_id}`, 5, 60_000)
 
   const file = formData.get('file') as File | null
 
@@ -40,7 +41,7 @@ export async function importCheckins(formData: FormData) {
     throw new Error('CSV appears empty or missing a header row')
   }
 
-  const supabase = createAdminClient()
+  const supabase = await createClient()
 
   let resolved = 0
   let unresolved = 0
@@ -58,12 +59,12 @@ export async function importCheckins(formData: FormData) {
     const { data: student } = await supabase
       .from('students')
       .select('id')
-      .eq('institution_id', DEV_INSTITUTION_ID)
+      .eq('institution_id', user.institution_id)
       .eq('roll_number', externalRef)
       .maybeSingle()
 
     const { error } = await supabase.from('external_checkin_events').insert({
-      institution_id: DEV_INSTITUTION_ID,
+      institution_id: user.institution_id,
       source: 'kent',
       external_student_ref: externalRef,
       student_id: student?.id ?? null,

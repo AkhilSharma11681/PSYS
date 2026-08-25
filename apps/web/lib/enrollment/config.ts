@@ -1,7 +1,7 @@
 'use server'
 
-import { createAdminClient } from '@/lib/supabase/admin'
-import { DEV_INSTITUTION_ID } from '@/lib/constants'
+import { createClient } from '@/lib/supabase/server'
+import { getCurrentUser } from '@/lib/auth/session'
 import { revalidatePath } from 'next/cache'
 
 // Spec Section 5, Phase E: "Thresholds are read from attendance_config
@@ -32,7 +32,8 @@ export async function updateAttendanceConfig(formData: FormData) {
     throw new Error('Count/duration fields must be non-negative whole numbers')
   }
 
-  const supabase = createAdminClient()
+  const user = await getCurrentUser()
+  const supabase = await createClient()
 
   const { error } = await supabase
     .from('attendance_config')
@@ -46,7 +47,7 @@ export async function updateAttendanceConfig(formData: FormData) {
       capture_buffer_minutes: captureBufferMinutes,
       dispute_window_hours: disputeWindowHours,
     })
-    .eq('institution_id', DEV_INSTITUTION_ID)
+    .eq('institution_id', user.institution_id)
     .eq('is_active', true)
 
   if (error) {
