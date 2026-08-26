@@ -8,7 +8,6 @@ MAX_JOBS_PER_INSTITUTION_PER_POLL = 5
 
 def claim_next_job(client):
     now = datetime.now(timezone.utc).isoformat()
-
     pending = (
         client.table("capture_jobs")
         .select("id, institution_id")
@@ -20,7 +19,6 @@ def claim_next_job(client):
     )
     if not pending.data:
         return []
-
     capped_ids = []
     counts = {}
     for job in pending.data:
@@ -29,7 +27,6 @@ def claim_next_job(client):
         if counts[inst] < MAX_JOBS_PER_INSTITUTION_PER_POLL:
             capped_ids.append(job["id"])
             counts[inst] += 1
-
     result = (
         client.table("capture_jobs")
         .update({"status": "processing", "claimed_at": now})
@@ -43,21 +40,18 @@ def claim_next_job(client):
 def run_worker(poll_interval_sec=2, max_idle_polls=15):
     client = get_client()
     idle_polls = 0
-
     print("Worker started, polling for jobs...")
     while idle_polls < max_idle_polls:
         jobs = claim_next_job(client)
-
         if not jobs:
             idle_polls += 1
             time.sleep(poll_interval_sec)
             continue
-
         idle_polls = 0
         for job in jobs:
             job_id = job["id"]
             try:
-                result = run_capture_job(job["camera_id"], job["session_id"])
+                result = run_capture_job(job["camera_id"], job["session_id"], job.get("run_at"))
                 client.table("capture_jobs").update({
                     "status": "done",
                     "completed_at": datetime.now(timezone.utc).isoformat(),
@@ -70,7 +64,6 @@ def run_worker(poll_interval_sec=2, max_idle_polls=15):
                     "completed_at": datetime.now(timezone.utc).isoformat(),
                 }).eq("id", job_id).execute()
                 print(f"Job {job_id} failed: {e}")
-
     print("No jobs for a while -- worker stopping.")
 
 
