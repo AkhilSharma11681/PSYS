@@ -18,7 +18,18 @@ class SessionNotActiveError(ValueError):
     """Raised when trying to capture against a completed/cancelled session."""
 
 
-def run_capture_job(camera_id: str, session_id: str):
+def run_capture_job(camera_id: str, session_id: str, run_at: str | None = None):
+    """run_at: the capture_jobs row's pre-scheduled timestamp, passed in by
+    worker.py when this runs off the queue. Used as captured_at so a
+    retried/re-claimed job produces the exact same captured_at both times,
+    letting the idempotency constraint on attendance_observations(
+    session_id, student_id, captured_at) actually catch duplicates (spec
+    Guardrail 6). Falls back to now() only when called without job context
+    (e.g. a direct /capture-and-recognize call with no queue involved).
+
+    Same captured_at is threaded through BOTH capture_events.attempted_at
+    and attendance_observations.captured_at so both reflect when the frame
+    was actually taken, not when each downstream write happened to run."""
     job_start = time.perf_counter()
 
     client = get_client()
@@ -41,13 +52,7 @@ def run_capture_job(camera_id: str, session_id: str):
     frame, error = grab_frame(rtsp_url)
     succeeded = frame is not None
 
-    # Single timestamp for this capture attempt, generated the moment we know
-    # the outcome -- threaded through to capture_events AND
-    # attendance_observations so both reflect when the frame was actually
-    # taken, not when each downstream write happened to run. This is what
-    # makes the idempotency constraint on attendance_observations
-    # (session_id, student_id, captured_at) actually work on retry.
-    captured_at = datetime.now(timezone.utc).isoformat()
+    captured_at = run_at or datetime.now(timezone.utc).isoformat()
 
     update_camera_health(camera_id, succeeded=succeeded, error=error)
 

@@ -26,15 +26,21 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <nav className="border-b px-6 py-3 flex items-center justify-between text-sm">
-          <div className="flex gap-4">
-            <Link href="/students" className="underline">Students</Link>
-            <Link href="/sessions" className="underline">Sessions</Link>
-            <Link href="/checkins" className="underline">Check-ins</Link>
-            <Link href="/settings" className="underline">Settings</Link>
+        <nav
+          className="border-b px-6 py-3 flex items-center justify-between text-sm sticky top-0 z-10"
+          style={{ background: '#16211C', borderColor: '#33443A', color: '#EDEADA' }}
+        >
+          <div className="flex gap-5 items-center">
+            <span className="font-mono text-xs tracking-widest" style={{ color: '#8FBF9F' }}>PSYS</span>
+            <Link href="/" className="font-medium hover:opacity-80">Dashboard</Link>
+            <Link href="/students" className="hover:opacity-80" style={{ color: '#93A399' }}>Students</Link>
+            <Link href="/sessions" className="hover:opacity-80" style={{ color: '#93A399' }}>Sessions</Link>
+            <Link href="/checkins" className="hover:opacity-80" style={{ color: '#93A399' }}>Check-ins</Link>
+            <Link href="/cameras" className="hover:opacity-80" style={{ color: '#93A399' }}>Cameras</Link>
+            <Link href="/settings" className="hover:opacity-80" style={{ color: '#93A399' }}>Settings</Link>
           </div>
           <form action={logout}>
-            <button type="submit" className="underline text-gray-500">
+            <button type="submit" className="hover:opacity-80" style={{ color: '#93A399' }}>
               Log out
             </button>
           </form>
