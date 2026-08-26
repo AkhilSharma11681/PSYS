@@ -28,6 +28,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col">
         <nav className="border-b px-6 py-3 flex items-center justify-between text-sm">
           <div className="flex gap-4">
+            <Link href="/" className="underline">Dashboard</Link>
             <Link href="/students" className="underline">Students</Link>
             <Link href="/sessions" className="underline">Sessions</Link>
             <Link href="/checkins" className="underline">Check-ins</Link>
