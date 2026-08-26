@@ -1,4 +1,5 @@
 import time
+from datetime import datetime, timezone
 from app.capture.rtsp_capture import grab_frame
 from app.capture.credentials import build_rtsp_url
 from app.capture.health import update_camera_health
@@ -40,18 +41,27 @@ def run_capture_job(camera_id: str, session_id: str):
     frame, error = grab_frame(rtsp_url)
     succeeded = frame is not None
 
+    # Single timestamp for this capture attempt, generated the moment we know
+    # the outcome -- threaded through to capture_events AND
+    # attendance_observations so both reflect when the frame was actually
+    # taken, not when each downstream write happened to run. This is what
+    # makes the idempotency constraint on attendance_observations
+    # (session_id, student_id, captured_at) actually work on retry.
+    captured_at = datetime.now(timezone.utc).isoformat()
+
     update_camera_health(camera_id, succeeded=succeeded, error=error)
 
     frame_path = upload_frame(frame, institution_id, session_id, camera_id) if succeeded else None
 
-    log_capture_event(institution_id, session_id, camera_id, succeeded, error, frame_path)
+    log_capture_event(institution_id, session_id, camera_id, succeeded, error, frame_path,
+                       attempted_at=captured_at)
 
     if not succeeded:
         processing_time_ms = (time.perf_counter() - job_start) * 1000
         record_processing_metric(institution_id, session_id, False, processing_time_ms)
         return {"capture_succeeded": False, "error": error, "recognition": None}
 
-    recognition_result = process_frame(frame, institution_id, session_id, frame_path)
+    recognition_result = process_frame(frame, institution_id, session_id, frame_path, captured_at)
 
     processing_time_ms = (time.perf_counter() - job_start) * 1000
     record_processing_metric(institution_id, session_id, True, processing_time_ms)
