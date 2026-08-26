@@ -1,6 +1,6 @@
 'use server'
 
-import { DEV_INSTITUTION_ID } from '@/lib/constants'
+import { getCurrentUser, getAccessToken } from '@/lib/auth/session'
 import { revalidatePath } from 'next/cache'
 
 // Calls camera-service's POST /disputes rather than inserting into the
@@ -14,13 +14,18 @@ export async function fileDispute(
   formData: FormData
 ) {
   const reason = (formData.get('reason') as string)?.trim()
+  const user = await getCurrentUser()
+  const token = await getAccessToken()
   const camaraServiceUrl = process.env.CAMERA_SERVICE_URL || 'http://localhost:8000'
 
   const response = await fetch(`${camaraServiceUrl}/disputes`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
     body: JSON.stringify({
-      institution_id: DEV_INSTITUTION_ID,
+      institution_id: user.institution_id,
       final_attendance_id: finalAttendanceId,
       session_id: sessionId,
       student_id: studentId,
@@ -43,10 +48,14 @@ export async function resolveDispute(
 ) {
   const status = formData.get('status') as string
   const resolvedStatus = (formData.get('resolved_status_for_attendance') as string) || null
+  const token = await getAccessToken()
   const camaraServiceUrl = process.env.CAMERA_SERVICE_URL || 'http://localhost:8000'
   const response = await fetch(`${camaraServiceUrl}/disputes/${disputeId}/resolve`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
     body: JSON.stringify({
       status,
       resolved_status_for_attendance: resolvedStatus || null,

@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Link from "next/link";
+import { logout } from "@/lib/auth/actions";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -23,7 +25,22 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <nav className="border-b px-6 py-3 flex items-center justify-between text-sm">
+          <div className="flex gap-4">
+            <Link href="/students" className="underline">Students</Link>
+            <Link href="/sessions" className="underline">Sessions</Link>
+            <Link href="/checkins" className="underline">Check-ins</Link>
+            <Link href="/settings" className="underline">Settings</Link>
+          </div>
+          <form action={logout}>
+            <button type="submit" className="underline text-gray-500">
+              Log out
+            </button>
+          </form>
+        </nav>
+        <main className="flex-1">{children}</main>
+      </body>
     </html>
   );
 }

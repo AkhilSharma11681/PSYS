@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCurrentUser } from '@/lib/auth/session'
+import { checkRateLimit } from '@/lib/rate-limit'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
@@ -47,8 +48,13 @@ export async function createStudent(formData: FormData) {
   if (!fullName) {
     throw new Error('Full name is required')
   }
+  if (!consentGiven) {
+    throw new Error('Consent must be given before enrollment (spec Section 9)')
+  }
 
   const user = await getCurrentUser()
+  checkRateLimit(`createStudent:${user.institution_id}`, 20, 60_000)
+
   const supabase = await createClient()
 
   const { data: student, error: studentError } = await supabase
@@ -58,8 +64,8 @@ export async function createStudent(formData: FormData) {
       full_name: fullName,
       roll_number: rollNumber || null,
       status: 'active',
-      consent_given: consentGiven,
-      consent_recorded_at: consentGiven ? new Date().toISOString() : null,
+      consent_given: true,
+      consent_recorded_at: new Date().toISOString(),
     })
     .select()
     .single()
@@ -95,6 +101,8 @@ export async function addEnrollmentPhoto(studentId: string, formData: FormData) 
     throw new Error('Student not found')
   }
 
+  checkRateLimit(`addEnrollmentPhoto:${student.institution_id}`, 30, 60_000)
+
   await uploadPhotoAndQueueJob(student.institution_id, studentId, photo)
 
   revalidatePath(`/students/${studentId}`)
@@ -127,6 +135,22 @@ export async function updateStudent(studentId: string, formData: FormData) {
 
   if (error) {
     throw new Error(`Failed to update student: ${error.message}`)
+  }
+
+  // Spec Section 9 (Privacy & Biometric Data Lifecycle): "when a student
+  // leaves the institution, their student_biometrics row is deleted."
+  // Scoped to graduated/transferred only -- NOT inactive (temporary,
+  // "semester break", student expected to return). Session client is
+  // used here (not admin) so RLS institution-scoping still applies.
+  if (status === 'graduated' || status === 'transferred') {
+    const { error: biometricsError } = await supabase
+      .from('student_biometrics')
+      .delete()
+      .eq('student_id', studentId)
+
+    if (biometricsError) {
+      throw new Error(`Failed to delete biometrics: ${biometricsError.message}`)
+    }
   }
 
   revalidatePath(`/students/${studentId}`)

@@ -1,15 +1,8 @@
 'use server'
 
-import { createAdminClient } from '@/lib/supabase/admin'
-import { DEV_INSTITUTION_ID } from '@/lib/constants'
+import { createClient } from '@/lib/supabase/server'
+import { getCurrentUser } from '@/lib/auth/session'
 import { revalidatePath } from 'next/cache'
-
-// TEMPORARY: hardcoded until login/session exists. Matches the teacher
-// test-user camera-service's own test scripts use. Spec's RLS policy
-// requires marked_by = auth.uid() and role in ('teacher','admin') --
-// enforced at the DB level once real auth exists; this admin-client path
-// bypasses it for now like every other write in this app currently does.
-const DEV_TEACHER_ID = '33333333-3333-3333-3333-333333333333'
 
 export async function markPermittedExit(sessionId: string, formData: FormData) {
   const studentId = formData.get('student_id') as string
@@ -19,13 +12,14 @@ export async function markPermittedExit(sessionId: string, formData: FormData) {
     throw new Error('Student is required')
   }
 
-  const supabase = createAdminClient()
+  const user = await getCurrentUser()
+  const supabase = await createClient()
 
   const { error } = await supabase.from('session_exceptions').insert({
-    institution_id: DEV_INSTITUTION_ID,
+    institution_id: user.institution_id,
     session_id: sessionId,
     student_id: studentId,
-    marked_by: DEV_TEACHER_ID,
+    marked_by: user.id,
     reason: reason || null,
   })
 
@@ -37,7 +31,7 @@ export async function markPermittedExit(sessionId: string, formData: FormData) {
 }
 
 export async function recordReturn(exceptionId: string, sessionId: string) {
-  const supabase = createAdminClient()
+  const supabase = await createClient()
 
   const { error } = await supabase
     .from('session_exceptions')

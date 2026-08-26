@@ -1,14 +1,15 @@
 import Link from 'next/link'
-import { createAdminClient } from '@/lib/supabase/admin'
-import { DEV_INSTITUTION_ID } from '@/lib/constants'
+import { createClient } from '@/lib/supabase/server'
+import { getCurrentUser } from '@/lib/auth/session'
 
 export default async function SessionsPage() {
-  const supabase = createAdminClient()
+  const user = await getCurrentUser()
+  const supabase = await createClient()
 
   const { data: sessions, error } = await supabase
     .from('class_sessions')
     .select('id, scheduled_start, scheduled_end, status, processing_status, class_id, classes(subject)')
-    .eq('institution_id', DEV_INSTITUTION_ID)
+    .eq('institution_id', user.institution_id)
     .order('scheduled_start', { ascending: false })
     .limit(50)
 

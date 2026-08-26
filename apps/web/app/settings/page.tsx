@@ -1,14 +1,15 @@
-import { createAdminClient } from '@/lib/supabase/admin'
-import { DEV_INSTITUTION_ID } from '@/lib/constants'
+import { createClient } from '@/lib/supabase/server'
+import { getCurrentUser } from '@/lib/auth/session'
 import { updateAttendanceConfig } from '@/lib/enrollment/config'
 
 export default async function SettingsPage() {
-  const supabase = createAdminClient()
+  const user = await getCurrentUser()
+  const supabase = await createClient()
 
   const { data: config } = await supabase
     .from('attendance_config')
     .select('*')
-    .eq('institution_id', DEV_INSTITUTION_ID)
+    .eq('institution_id', user.institution_id)
     .eq('is_active', true)
     .single()
 
