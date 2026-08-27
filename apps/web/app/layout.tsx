@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PSYS — Attendance, Automated",
+  title: "PSYS",
   description: "Multi-tenant classroom attendance via face recognition",
 };
 

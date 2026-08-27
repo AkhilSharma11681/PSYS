@@ -18,9 +18,6 @@ export default async function LoginPage({
             PSYS
           </p>
           <h1 className="text-xl font-semibold">Sign in to your dashboard</h1>
-          <p className="text-sm mt-1" style={{ color: 'var(--muted)' }}>
-            Attendance, automated.
-          </p>
         </div>
 
         <form
