@@ -8,35 +8,44 @@ export default async function LoginPage({
   const { error } = await searchParams
 
   return (
-    <div className="p-8 max-w-sm mx-auto mt-20">
-      <h1 className="text-2xl font-semibold mb-6">Sign in</h1>
-      <form action={login} className="space-y-4">
-        <div>
-          <label className="block text-sm mb-1">Email</label>
-          <input
-            type="email"
-            name="email"
-            required
-            className="w-full border rounded-md px-3 py-2 text-sm"
-          />
+    <div
+      className="min-h-full flex items-center justify-center px-6"
+      style={{ background: 'var(--background)', color: 'var(--foreground)' }}
+    >
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-8">
+          <p className="font-mono text-xs tracking-widest mb-2" style={{ color: 'var(--accent-good)' }}>
+            PSYS
+          </p>
+          <h1 className="text-xl font-semibold">Sign in to your dashboard</h1>
+          <p className="text-sm mt-1" style={{ color: 'var(--muted)' }}>
+            Attendance, automated.
+          </p>
         </div>
-        <div>
-          <label className="block text-sm mb-1">Password</label>
-          <input
-            type="password"
-            name="password"
-            required
-            className="w-full border rounded-md px-3 py-2 text-sm"
-          />
-        </div>
-        {error && <p className="text-sm text-red-500">{decodeURIComponent(error)}</p>}
-        <button
-          type="submit"
-          className="w-full bg-black text-white px-4 py-2 rounded-md text-sm"
+
+        <form
+          action={login}
+          className="space-y-4 p-6 rounded-lg border"
+          style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
         >
-          Sign in
-        </button>
-      </form>
+          <div>
+            <label className="field-label">Email</label>
+            <input type="email" name="email" required className="field-input" />
+          </div>
+          <div>
+            <label className="field-label">Password</label>
+            <input type="password" name="password" required className="field-input" />
+          </div>
+          {error && (
+            <p className="text-sm" style={{ color: 'var(--accent-bad)' }}>
+              {decodeURIComponent(error)}
+            </p>
+          )}
+          <button type="submit" className="btn-primary w-full">
+            Sign in
+          </button>
+        </form>
+      </div>
     </div>
   )
 }

@@ -42,73 +42,47 @@ export default async function DashboardPage() {
   ]
 
   return (
-    <div
-      className="min-h-full px-6 py-10 sm:px-10"
-      style={{ background: '#16211C', color: '#EDEADA' }}
-    >
-      <div className="max-w-4xl mx-auto">
-        <p
-          className="text-xs uppercase tracking-[0.2em] mb-1"
-          style={{ color: '#93A399' }}
-        >
-          Roll Register
-        </p>
-        <h1 className="text-2xl font-semibold mb-1">Dashboard</h1>
-        <p className="text-sm mb-10" style={{ color: '#93A399' }}>
+    <div className="page-shell">
+      <div className="page-inner" style={{ maxWidth: '56rem' }}>
+        <p className="page-eyebrow">Roll Register</p>
+        <h1 className="page-title">Dashboard</h1>
+        <p className="page-subtitle">
           {user.full_name} · <span className="capitalize">{user.role}</span>
         </p>
 
         <div
           className="grid grid-cols-2 sm:grid-cols-5 mb-12 border-t"
-          style={{ borderColor: '#33443A' }}
+          style={{ borderColor: 'var(--border)' }}
         >
           {stats.map((s) => (
             <Link
               key={s.label}
               href={s.href}
-              className="px-4 py-5 border-b border-r first:border-l transition-colors"
-              style={{ borderColor: '#33443A' }}
+              className="px-4 py-5 border-b border-r first:border-l transition-colors hover:bg-white/[0.03]"
+              style={{ borderColor: 'var(--border)' }}
             >
               <div
                 className="text-4xl font-mono tabular-nums font-semibold"
-                style={{ color: s.attention ? '#E8B94B' : '#8FBF9F' }}
+                style={{ color: s.attention ? 'var(--accent-warn)' : 'var(--accent-good)' }}
               >
                 {String(s.value).padStart(2, '0')}
               </div>
-              <div
-                className="text-xs uppercase tracking-wide mt-2"
-                style={{ color: '#93A399' }}
-              >
+              <div className="text-xs uppercase tracking-wide mt-2" style={{ color: 'var(--muted)' }}>
                 {s.label}
               </div>
             </Link>
           ))}
         </div>
 
-        <p
-          className="text-xs uppercase tracking-[0.2em] mb-3"
-          style={{ color: '#93A399' }}
-        >
-          Quick Actions
-        </p>
-        <div className="border-t" style={{ borderColor: '#33443A' }}>
+        <p className="page-eyebrow">Quick Actions</p>
+        <div className="ledger">
           {quickLinks.map((l) => (
-            <Link
-              key={l.label}
-              href={l.href}
-              className="flex items-baseline gap-3 py-3 border-b group"
-              style={{ borderColor: '#33443A' }}
-            >
-              <span
-                className="font-mono text-sm transition-colors"
-                style={{ color: '#8FBF9F' }}
-              >
-                ▎
-              </span>
-              <span className="text-sm font-medium">{l.label}</span>
-              <span className="text-xs" style={{ color: '#93A399' }}>
-                — {l.desc}
-              </span>
+            <Link key={l.label} href={l.href} className="ledger-row" style={{ gridTemplateColumns: '1fr' }}>
+              <div className="flex items-baseline gap-3">
+                <span className="font-mono text-sm" style={{ color: 'var(--accent-good)' }}>▎</span>
+                <span className="text-sm font-medium">{l.label}</span>
+                <span className="text-xs" style={{ color: 'var(--muted)' }}>— {l.desc}</span>
+              </div>
             </Link>
           ))}
         </div>

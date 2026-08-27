@@ -2,6 +2,22 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentUser } from '@/lib/auth/session'
 
+const STATUS_BADGE: Record<string, string> = {
+  active: 'badge-good',
+  inactive: 'badge-neutral',
+  graduated: 'badge-warn',
+  transferred: 'badge-warn',
+}
+
+function Badge({ label, variant }: { label: string; variant: string }) {
+  return (
+    <span className={`badge ${variant}`}>
+      <span className="badge-dot" style={{ background: 'currentColor' }} />
+      {label}
+    </span>
+  )
+}
+
 export default async function StudentsPage() {
   const user = await getCurrentUser()
   const supabase = await createClient()
@@ -12,58 +28,49 @@ export default async function StudentsPage() {
     .eq('institution_id', user.institution_id)
     .order('full_name')
 
-  if (error) {
-    return <div className="p-8 text-red-500">Failed to load students: {error.message}</div>
-  }
-
   return (
-    <div className="p-8 max-w-3xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold">Students</h1>
-        <div className="flex gap-2">
-          <Link
-            href="/students/bulk-import"
-            className="border px-4 py-2 rounded-md text-sm"
-          >
-            Bulk Import
-          </Link>
-          <Link
-            href="/students/new"
-            className="bg-black text-white px-4 py-2 rounded-md text-sm"
-          >
-            + Add Student
-          </Link>
+    <div className="page-shell">
+      <div className="page-inner">
+        <div className="flex items-center justify-between mb-1">
+          <div>
+            <p className="page-eyebrow">Enrollment</p>
+            <h1 className="page-title" style={{ marginBottom: 0 }}>Students</h1>
+          </div>
+          <div className="flex gap-2">
+            <Link href="/students/bulk-import" className="btn-secondary">Bulk Import</Link>
+            <Link href="/students/new" className="btn-primary">+ Add Student</Link>
+          </div>
         </div>
-      </div>
+        <p className="page-subtitle">{students?.length ?? 0} enrolled</p>
 
-      {students && students.length === 0 ? (
-        <p className="text-gray-500">No students enrolled yet.</p>
-      ) : (
-        <table className="w-full text-sm border-collapse">
-          <thead>
-            <tr className="text-left border-b">
-              <th className="py-2 pr-4">Name</th>
-              <th className="py-2 pr-4">Roll No.</th>
-              <th className="py-2 pr-4">Status</th>
-              <th className="py-2">Photos</th>
-            </tr>
-          </thead>
-          <tbody>
+        {error && <p className="text-sm" style={{ color: 'var(--accent-bad)' }}>Failed to load students: {error.message}</p>}
+
+        {students && students.length === 0 ? (
+          <p className="ledger-empty">No students enrolled yet.</p>
+        ) : (
+          <div className="ledger">
+            <div className="ledger-head" style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr' }}>
+              <div>Name</div>
+              <div>Roll No.</div>
+              <div>Status</div>
+              <div>Photos</div>
+            </div>
             {students?.map((s) => (
-              <tr key={s.id} className="border-b">
-                <td className="py-2 pr-4">
-                  <Link href={`/students/${s.id}`} className="underline">
-                    {s.full_name}
-                  </Link>
-                </td>
-                <td className="py-2 pr-4">{s.roll_number || '—'}</td>
-                <td className="py-2 pr-4">{s.status}</td>
-                <td className="py-2">{s.enrollment_photo_count}</td>
-              </tr>
+              <Link
+                key={s.id}
+                href={`/students/${s.id}`}
+                className="ledger-row"
+                style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr' }}
+              >
+                <div className="text-sm font-medium">{s.full_name}</div>
+                <div className="text-sm" style={{ color: 'var(--muted)' }}>{s.roll_number || '—'}</div>
+                <div><Badge label={s.status} variant={STATUS_BADGE[s.status] || 'badge-neutral'} /></div>
+                <div className="text-sm" style={{ color: 'var(--muted)' }}>{s.enrollment_photo_count}</div>
+              </Link>
             ))}
-          </tbody>
-        </table>
-      )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

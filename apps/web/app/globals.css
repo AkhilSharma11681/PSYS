@@ -3,6 +3,12 @@
 :root {
   --background: #16211C;
   --foreground: #EDEADA;
+  --surface: #1D2A23;
+  --border: #33443A;
+  --muted: #93A399;
+  --accent-good: #8FBF9F;
+  --accent-warn: #E8B94B;
+  --accent-bad: #C1666B;
 }
 
 @theme inline {
@@ -22,48 +28,133 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* Individual pages still use plain Tailwind gray-scale/black-and-white
-   utility classes (bg-white, text-black, border-gray-*) written before
-   the chalkboard theme existed. Rather than rewrite every page's classes
-   right now, invert them here so they render legibly on the dark
-   background -- forms, tables, and buttons stay usable immediately.
-   Follow-up: migrate each page to the chalkboard palette directly. */
-main input,
-main select,
-main textarea {
-  background: #1D2A23;
+/* ---- Shared page shell ---- */
+.page-shell {
+  min-height: 100%;
+  padding: 2.5rem 1.5rem;
+  background: var(--background);
+  color: var(--foreground);
+}
+@media (min-width: 640px) {
+  .page-shell { padding: 2.5rem; }
+}
+.page-inner {
+  max-width: 56rem;
+  margin: 0 auto;
+}
+.page-eyebrow {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--muted);
+  margin-bottom: 0.25rem;
+}
+.page-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+.page-subtitle {
+  font-size: 0.875rem;
+  color: var(--muted);
+  margin-bottom: 2rem;
+}
+
+/* ---- Ledger (table-like list) ---- */
+.ledger {
+  border-top: 1px solid var(--border);
+}
+.ledger-head {
+  display: grid;
+  gap: 1rem;
+  padding: 0.5rem 0;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+}
+.ledger-row {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem 0;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  transition: background-color 0.15s ease;
+}
+a.ledger-row:hover, button.ledger-row:hover {
+  background: rgba(255,255,255,0.03);
+}
+.ledger-empty {
+  font-size: 0.875rem;
+  color: var(--muted);
+  padding: 1rem 0;
+}
+
+/* ---- Badges ---- */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.75rem;
+  padding: 0.125rem 0.625rem;
+  border-radius: 9999px;
+  border: 1px solid;
+}
+.badge-dot {
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: 9999px;
+}
+.badge-neutral { color: var(--muted); border-color: rgba(147,163,153,0.35); background: rgba(147,163,153,0.08); }
+.badge-good { color: var(--accent-good); border-color: rgba(143,191,159,0.35); background: rgba(143,191,159,0.08); }
+.badge-warn { color: var(--accent-warn); border-color: rgba(232,185,75,0.35); background: rgba(232,185,75,0.08); }
+.badge-bad { color: var(--accent-bad); border-color: rgba(193,102,107,0.35); background: rgba(193,102,107,0.08); }
+
+/* ---- Buttons ---- */
+.btn-primary {
+  background: #2F6F4F;
   color: #EDEADA;
-  border-color: #33443A !important;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  transition: filter 0.15s ease;
+}
+.btn-primary:hover { filter: brightness(1.15); }
+.btn-secondary {
+  border: 1px solid var(--border);
+  color: var(--foreground);
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  transition: background-color 0.15s ease;
+}
+.btn-secondary:hover { background: rgba(255,255,255,0.03); }
+
+/* ---- Forms ---- */
+.field-label {
+  display: block;
+  font-size: 0.875rem;
+  margin-bottom: 0.25rem;
+  color: var(--foreground);
+}
+.field-input {
+  width: 100%;
+  background: var(--surface);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+}
+.field-input::placeholder { color: var(--muted); }
+.field-hint {
+  font-size: 0.8125rem;
+  color: var(--muted);
 }
 
-main table {
-  color: #EDEADA;
-}
-
-main th,
-main td {
-  border-color: #33443A !important;
-}
-
-main .text-gray-500,
-main .text-gray-400 {
-  color: #93A399 !important;
-}
-
-main .border,
-main .border-b,
-main .border-t {
-  border-color: #33443A !important;
-}
-
-main .bg-black {
-  background: #2F6F4F !important;
-}
-
-main .bg-white {
-  background: #1D2A23 !important;
-}
-
-main a.underline {
-  color: #8FBF9F;
+/* ---- Links ---- */
+.link-accent {
+  color: var(--accent-good);
+  text-decoration: underline;
 }

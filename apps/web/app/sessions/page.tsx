@@ -2,6 +2,30 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentUser } from '@/lib/auth/session'
 
+const STATUS_BADGE: Record<string, string> = {
+  scheduled: 'badge-neutral',
+  in_progress: 'badge-warn',
+  completed: 'badge-good',
+  cancelled: 'badge-bad',
+}
+
+const PROCESSING_BADGE: Record<string, string> = {
+  pending: 'badge-neutral',
+  processing: 'badge-warn',
+  finalized: 'badge-good',
+  failed: 'badge-bad',
+  needs_review: 'badge-warn',
+}
+
+function Badge({ label, variant }: { label: string; variant: string }) {
+  return (
+    <span className={`badge ${variant}`}>
+      <span className="badge-dot" style={{ background: 'currentColor' }} />
+      {label}
+    </span>
+  )
+}
+
 export default async function SessionsPage() {
   const user = await getCurrentUser()
   const supabase = await createClient()
@@ -13,44 +37,47 @@ export default async function SessionsPage() {
     .order('scheduled_start', { ascending: false })
     .limit(50)
 
-  if (error) {
-    return <div className="p-8 text-red-500">Failed to load sessions: {error.message}</div>
-  }
-
   return (
-    <div className="p-8 max-w-3xl mx-auto">
-      <h1 className="text-2xl font-semibold mb-6">Sessions</h1>
+    <div className="page-shell">
+      <div className="page-inner">
+        <p className="page-eyebrow">Class Sessions</p>
+        <h1 className="page-title">Sessions</h1>
+        <p className="page-subtitle">Every recorded and in-progress class session.</p>
 
-      {sessions && sessions.length === 0 ? (
-        <p className="text-gray-500">No sessions yet.</p>
-      ) : (
-        <table className="w-full text-sm border-collapse">
-          <thead>
-            <tr className="text-left border-b">
-              <th className="py-2 pr-4">Subject</th>
-              <th className="py-2 pr-4">Scheduled</th>
-              <th className="py-2 pr-4">Status</th>
-              <th className="py-2">Processing</th>
-            </tr>
-          </thead>
-          <tbody>
+        {error && <p className="text-sm" style={{ color: 'var(--accent-bad)' }}>Failed to load sessions: {error.message}</p>}
+
+        {sessions && sessions.length === 0 ? (
+          <p className="ledger-empty">No sessions yet.</p>
+        ) : (
+          <div className="ledger">
+            <div className="ledger-head" style={{ gridTemplateColumns: '2fr 1.5fr 1fr 1fr' }}>
+              <div>Subject</div>
+              <div>Scheduled</div>
+              <div>Status</div>
+              <div>Processing</div>
+            </div>
             {sessions?.map((s: any) => (
-              <tr key={s.id} className="border-b">
-                <td className="py-2 pr-4">
-                  <Link href={`/sessions/${s.id}`} className="underline">
-                    {s.classes?.subject || '(no class)'}
-                  </Link>
-                </td>
-                <td className="py-2 pr-4">
+              <Link
+                key={s.id}
+                href={`/sessions/${s.id}`}
+                className="ledger-row"
+                style={{ gridTemplateColumns: '2fr 1.5fr 1fr 1fr' }}
+              >
+                <div className="text-sm font-medium">{s.classes?.subject || '(no class)'}</div>
+                <div className="text-sm" style={{ color: 'var(--muted)' }}>
                   {s.scheduled_start ? new Date(s.scheduled_start).toLocaleString() : '—'}
-                </td>
-                <td className="py-2 pr-4">{s.status}</td>
-                <td className="py-2">{s.processing_status || '—'}</td>
-              </tr>
+                </div>
+                <div><Badge label={s.status} variant={STATUS_BADGE[s.status] || 'badge-neutral'} /></div>
+                <div>
+                  {s.processing_status && (
+                    <Badge label={s.processing_status} variant={PROCESSING_BADGE[s.processing_status] || 'badge-neutral'} />
+                  )}
+                </div>
+              </Link>
             ))}
-          </tbody>
-        </table>
-      )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
