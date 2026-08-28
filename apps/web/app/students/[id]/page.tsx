@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { addEnrollmentPhoto, updateStudent, confirmConsent } from '@/lib/enrollment/actions'
 
 export default async function StudentDetailPage({
@@ -28,10 +29,32 @@ export default async function StudentDetailPage({
 
   const { data: pendingJobs } = await supabase
     .from('enrollment_jobs')
-    .select('id, status, error, created_at')
+    .select('id, status, error, created_at, storage_path')
     .eq('student_id', id)
     .neq('status', 'done')
     .order('created_at', { ascending: false })
+
+  // Signed URLs so a failed/pending upload can actually be viewed for
+  // debugging -- done jobs have no photo left (deleted after embedding
+  // per spec Section 9 privacy lifecycle), so nothing to sign there.
+  // No storage RLS policy exists on this bucket yet (known gap, flagged
+  // in uploadPhotoAndQueueJob's comment in actions.ts), so this uses the
+  // admin client server-side only -- the signed URL it returns is the
+  // only thing that ever reaches the browser.
+  const admin = createAdminClient()
+  const jobPhotoUrls: Record<string, string> = {}
+  if (pendingJobs) {
+    for (const job of pendingJobs) {
+      if (job.storage_path) {
+        const { data: signed } = await admin.storage
+          .from('enrollment-photos')
+          .createSignedUrl(job.storage_path, 300)
+        if (signed?.signedUrl) {
+          jobPhotoUrls[job.id] = signed.signedUrl
+        }
+      }
+    }
+  }
 
   const addPhoto = addEnrollmentPhoto.bind(null, id)
   const editStudent = updateStudent.bind(null, id)
@@ -114,6 +137,14 @@ export default async function StudentDetailPage({
           {photos.map((p) => (
             <li key={p.id}>
               Quality: {p.quality_score?.toFixed(2)} {p.is_primary ? '(primary)' : ''}
+              {(p.quality_score ?? 1) < 0.5 && (
+                <span className="text-amber-600">
+                  {' '}— low sharpness score, consider adding a sharper photo
+                </span>
+              )}
+              <span className="text-gray-500">
+                {' '}(source photo deleted after processing, per privacy policy)
+              </span>
             </li>
           ))}
         </ul>
@@ -122,11 +153,25 @@ export default async function StudentDetailPage({
       )}
 
       {pendingJobs && pendingJobs.length > 0 && (
-        <div className="mb-6 text-sm text-amber-600 space-y-1">
+        <div className="mb-6 text-sm space-y-2">
           {pendingJobs.map((j) => (
-            <p key={j.id}>
-              {j.status === 'failed' ? `Failed: ${j.error}` : `${j.status}...`}
-            </p>
+            <div key={j.id} className="text-amber-600">
+              <p>{j.status === 'failed' ? `Failed: ${j.error}` : `${j.status}...`}</p>
+              {jobPhotoUrls[j.id] && (
+                <a
+                  href={jobPhotoUrls[j.id]}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block mt-1"
+                >
+                  <img
+                    src={jobPhotoUrls[j.id]}
+                    alt="Uploaded photo"
+                    className="h-24 rounded-md border border-amber-600"
+                  />
+                </a>
+              )}
+            </div>
           ))}
         </div>
       )}
