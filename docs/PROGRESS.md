@@ -32,6 +32,29 @@ with"** field first — that's the actual to-do list, not a summary to skim.
 ## Session log
 (Newest entry at top. Use the Entry Format above for every new one.)
 
+### 2026-08-29 — Session 2
+**Goal for this session:**
+Review spec (Claude (1).md) and update docs to reflect full project status and remaining work.
+**Done:**
+- Read full spec from `docs/Claude (1).md` — confirmed implementation matches spec through Phase 5
+- Added `processing_metrics` table to ARCHITECTURE.md (was missing from Key tables section)
+- Identified remaining phases: Auth (Phase 2), Teacher Dashboard (Phase 6), Student Dashboard (Phase 7)
+**Files changed:**
+- `docs/ARCHITECTURE.md` — added processing_metrics to Key tables section
+**Left / not done:**
+- Phase 2 (Auth) — RLS currently bypassed by service-role client; need real login flow
+- Phase 6 (Teacher Dashboard) — UI for reviewing uncertain/camera_issue cases, resolving disputes
+- Phase 7 (Student Dashboard) — UI for students to view attendance, file disputes
+- Operational gaps: backup/recovery, API rate limits
+**Next session should start with:**
+- User to pick priority: Auth (Phase 2), Teacher Dashboard (Phase 6), or Student Dashboard (Phase 7)
+**Open questions for teammate:**
+- None
+**Blockers:**
+- None
+
+---
+
 ### 2026-08-28 — Session 1
 **Goal for this session:**
 Update DECISIONS.md to reflect shipped Phase 5 implementation and remove stale entries.

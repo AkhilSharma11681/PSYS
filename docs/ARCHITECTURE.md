@@ -152,6 +152,9 @@ Per-institution thresholds (all configurable, never hardcoded):
 ### Audit
 - `audit_logs` — all human decisions logged
 
+### Operational monitoring
+- `processing_metrics` — aggregate counters (frames attempted/succeeded, latency) per session
+
 ## Migration history (as of 2026-08-28)
 
 Current highest: `0025_enrollment_jobs_retry_count.sql`
