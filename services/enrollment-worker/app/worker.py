@@ -12,6 +12,7 @@ SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_SERVICE_ROLE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
 CAMERA_SERVICE_URL = os.environ.get("CAMERA_SERVICE_URL", "http://localhost:8000")
 POLL_INTERVAL_SECONDS = 5
+MAX_RETRIES = 3
 
 supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
@@ -21,6 +22,7 @@ def process_job(job):
     student_id = job["student_id"]
     institution_id = job["institution_id"]
     storage_path = job["storage_path"]
+    retry_count = job.get("retry_count", 0)
 
     supabase.table("enrollment_jobs").update({"status": "processing"}).eq("id", job_id).execute()
 
@@ -71,10 +73,6 @@ def process_job(job):
             {"enrollment_photo_count": current_count + 1}
         ).eq("id", student_id).execute()
 
-        # Mark done BEFORE deleting the photo -- if the delete step below
-        # fails, the embedding is already safely stored and the job is
-        # correctly marked complete; we just log a cleanup warning rather
-        # than treating storage deletion as part of the critical path.
         supabase.table("enrollment_jobs").update(
             {
                 "status": "done",
@@ -84,9 +82,6 @@ def process_job(job):
 
         print(f"[done] job {job_id} -> student {student_id}")
 
-        # Spec Section 9 (Privacy & Biometric Data Lifecycle): once the
-        # embedding is generated, the raw enrollment photo should not be
-        # kept long-term -- only the embedding vector persists.
         try:
             supabase.storage.from_("enrollment-photos").remove([storage_path])
             print(f"[cleanup] deleted source photo for job {job_id}")
@@ -94,10 +89,20 @@ def process_job(job):
             print(f"[cleanup warning] job {job_id} photo not deleted: {cleanup_error}")
 
     except Exception as e:
-        supabase.table("enrollment_jobs").update(
-            {"status": "failed", "error": str(e)}
-        ).eq("id", job_id).execute()
-        print(f"[failed] job {job_id}: {e}")
+        new_retry_count = retry_count + 1
+        if new_retry_count <= MAX_RETRIES:
+            # Transient failures (camera-service temporarily down, network
+            # blip) shouldn't need a manual DB fix -- put it back in the
+            # queue, next poll cycle picks it up again.
+            supabase.table("enrollment_jobs").update(
+                {"status": "pending", "retry_count": new_retry_count, "error": str(e)}
+            ).eq("id", job_id).execute()
+            print(f"[retry {new_retry_count}/{MAX_RETRIES}] job {job_id}: {e}")
+        else:
+            supabase.table("enrollment_jobs").update(
+                {"status": "failed", "error": str(e)}
+            ).eq("id", job_id).execute()
+            print(f"[failed after {MAX_RETRIES} retries] job {job_id}: {e}")
 
 
 def poll_loop():
