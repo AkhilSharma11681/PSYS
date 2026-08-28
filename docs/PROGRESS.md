@@ -10,51 +10,49 @@ Every session log entry below MUST follow this exact template — no free-form s
 ### YYYY-MM-DD — Session N
 **Goal for this session:**
 **Done:**
-- 
+-
 **Files changed:**
-- 
+-
 **Left / not done:**
-- 
+-
 **Next session should start with:**
-- 
+-
 **Open questions for teammate:**
-- 
+-
 **Blockers:**
-- 
+-
+
 ```
 
 At the START of a new session, read the most recent entry's **"Next session should start
 with"** field first — that's the actual to-do list, not a summary to skim.
 
-## Status as of last claude.ai session (reconstructed from export)
-- ✅ **Phase 1 — Enrollment:** merged. Student CRUD, photo upload, quality check, embedding
-  generation into `student_biometrics`.
-- ✅ **Phase 1.5 — External check-in sync:** merged. `external_checkin_events`, ID mapping,
-  CSV import w/ roll-number resolution, `full_enrollment_fallback` logic.
-- ✅ **Phase 4 foundation — Classes/Enrollments:** `classes` + `class_enrollments` with RLS
-  committed (`0008_classes_and_enrollments.sql`, commit `c8a6097`), merged to `main`.
-- ✅ `class_sessions` upgraded by teammate (`0009_upgrade_class_sessions.sql`) — pulled and
-  verified column set matches expectations.
-- ✅ `derive_session_roster()` Postgres function built and working against the current
-  `roster_source` constraint.
-- ✅ Enrollment-worker deletes source photo from Storage post-embedding (privacy cleanup).
-- 🔜 **Open question sent to teammate (unresolved at export time):** does camera-service call
-  `derive_session_roster()` directly, or did it get its own roster query? Needs confirming to
-  avoid duplicate logic.
-- 🔜 **Phase 5 (Finalization) — not yet started.** Three handoff contracts were agreed
-  conceptually (see `ARCHITECTURE.md`); a call with the teammate was planned to nail exact
-  function signatures and the `session_exceptions`/`final_attendance` schema before either side
-  writes code. **Unknown from the export whether that call happened or what was decided.**
-
-## [VERIFY] — things to confirm in a fresh Claude Code session
-- [ ] Did the Phase 5 handoff call with the teammate happen? What was agreed?
-- [ ] Current contents of `supabase/migrations/` (highest migration number, any renumbering
-      done after the `0011` collision)
-- [ ] Whether `session_exceptions` / `final_attendance` tables actually exist yet or are still
-      draft-only
-- [ ] Current branch state of `feature/enrollment` vs `main`
-
 ---
 
 ## Session log
 (Newest entry at top. Use the Entry Format above for every new one.)
+
+### 2026-08-28 — Session 1
+**Goal for this session:**
+Update DECISIONS.md to reflect shipped Phase 5 implementation and remove stale entries.
+**Done:**
+- Rewrote `docs/ARCHITECTURE.md` from live code (Phase 5 finalization logic in
+  `services/camera-service/app/finalization/`, disputes, exceptions, review queue)
+- Updated `docs/DECISIONS.md`: removed stale "Phase 5 needs a call" entry, added 7 new
+  decisions revealed by the finalization code (quorum failure handling, camera degradation
+  windows from capture_events, exception-window resolution in SQL, disputes endpoint vs
+  direct insert, best-evidence photo selection, audit logging for disputes)
+- Verified Phase 5 is fully shipped on camera-service side: orchestrator, boundaries,
+  gap_check, camera_windows, exceptions, disputes, review all implemented
+**Files changed:**
+- `docs/ARCHITECTURE.md` — rewritten from live code
+- `docs/DECISIONS.md` — updated with new decisions, removed stale Phase 5 entry
+**Left / not done:**
+- `docs/PROGRESS.md` needs "Next session should start with" field populated once user
+  confirms what they're actually working on next
+**Next session should start with:**
+- [awaiting user input]
+**Open questions for teammate:**
+- None — Phase 5 handoff is complete, both sides have shipped their code
+**Blockers:**
+- None
