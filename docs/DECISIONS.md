@@ -18,14 +18,27 @@
   to just `external_checkin`/`full_enrollment_fallback` — `derive_session_roster()` only ever
   sets one of the two remaining values, so this was compatible.
 - **Permitted exits (`session_exceptions`) are excluded from both `presence_score` and gap-check
-  windows** — treated like a camera outage against the student, not counted as absence.
+  windows** — treated like a camera outage for that student, not counted as absence.
 - **Occlusion/camera-condition gaps are never auto-marked `left_early`** — only clean
   `no_face`/`poor_quality` gaps past `max_gap_minutes` are. Anything ambiguous is `uncertain` and
   goes to human review with evidence, never silently resolved.
-- **Finalization is idempotent by construction:** `update class_sessions set finalized_at =
-  now() where id = $1 and finalized_at is null returning id` — a worker that gets no row back
-  must exit without side effects, since another worker already finalized it.
-- **Phase 5 (Finalization) is split into three explicit handoff contracts** rather than divided
-  by table ownership, because gap-check needs both sides' data. See `ARCHITECTURE.md` for the
-  three contracts. Both sides agreed to align on exact function signatures/schemas via a call
-  before writing code — same pattern used successfully before splitting Phase 1.5.
+- **Finalization is idempotent by construction:** atomic `finalized_at` claim means a worker that
+  gets no row back must exit immediately without side effects — another worker already finalized.
+- **Quorum failure sets `processing_status = 'needs_review'`, not `camera_status`.** Quorum miss
+  doesn't necessarily mean the camera was offline — it's a "human should look at this" signal
+  distinct from live camera health.
+- **Camera degradation windows derived from `capture_events` history**, not just current
+  `camera_health` state — need the historical record to explain gaps during past sessions.
+- **Single failed capture attempt still counts as degraded window.** Gap-check uses `<=` overlap
+  check (not `<`) so a zero-width window from one isolated failure still flags camera issues.
+- **Exception windows returned already-resolved from `get_session_exceptions()` RPC.** The
+  `return_at` fallback to `actual_end`/`scheduled_end` happens in SQL, not in each caller — same
+  pattern as `derive_session_roster()`.
+- **Disputes call camera-service endpoint, not direct DB insert.** The endpoint does real work:
+  best-evidence photo lookup, dispute-window enforcement against `attendance_config`. A raw
+  Supabase insert would silently skip all of that.
+- **Best evidence photo for disputes: highest-quality observation with stored photo.** Picks the
+  strongest single piece of evidence to show an admin, not just the first or last one.
+- **Every dispute resolution logged to `audit_logs`.** Spec requirement: every human decision is
+  recorded. Two log entries if attendance is also corrected: one for the dispute, one for the
+  final_attendance change.
