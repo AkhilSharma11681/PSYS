@@ -6,6 +6,7 @@
 @docs/ARCHITECTURE.md
 @docs/PROGRESS.md
 @docs/DECISIONS.md
+@OPERATIONS.md
 
 ## Start of every session
 Before doing anything else, read the **most recent entry** in `docs/PROGRESS.md` and treat
