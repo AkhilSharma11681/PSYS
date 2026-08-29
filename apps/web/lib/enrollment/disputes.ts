@@ -39,6 +39,7 @@ export async function fileDispute(
   }
 
   revalidatePath(`/sessions/${sessionId}`)
+  revalidatePath('/') // To update student dashboard if filed from there
 }
 
 export async function resolveDispute(

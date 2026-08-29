@@ -1,11 +1,18 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentUser } from '@/lib/auth/session'
+import StudentDashboard from './student-dashboard'
 
 export default async function DashboardPage() {
   const user = await getCurrentUser()
   const supabase = await createClient()
 
+  // If the user is a student, render their specific dashboard
+  if (user.role === 'student') {
+    return <StudentDashboard user={user} />
+  }
+
+  // Teacher & Admin Dashboard
   const [
     { count: studentCount },
     { count: sessionCount },

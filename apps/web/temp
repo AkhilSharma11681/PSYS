@@ -1,0 +1,26 @@
+### 2026-08-29 — Session 3
+**Goal for this session:**
+Build the Teacher Dashboard (Phase 6) — dedicated attendance review, session attendance detail, and disputes management.
+**Done:**
+- Created `apps/web/lib/enrollment/attendance.ts` server actions (`getTeacherSessions`, `getSessionAttendance`, `getReviewQueue`, `getAllReviewItems`, `resolveReviewItem`, `getAllDisputes`)
+- Built `/attendance` route matching dashboard styling to list teacher's sessions with summary statistics
+- Built `/attendance/[id]` detail view replacing raw styling with the project design system (`page-shell`, `ledger-row`), showing full roster, review queue, exceptions
+- Built `/disputes` route listing pending/approved/rejected disputes and wiring them up to camera-service `resolveDispute` endpoints
+- Updated home page Quick Actions and Stats to link to `/attendance` and `/disputes`
+- Wired `NavLinks.tsx` with `/attendance` and `/disputes` entries
+**Files changed:**
+- `apps/web/lib/enrollment/attendance.ts` (created)
+- `apps/web/app/attendance/page.tsx` (created)
+- `apps/web/app/attendance/[id]/page.tsx` (created)
+- `apps/web/app/disputes/page.tsx` (created)
+- `apps/web/app/page.tsx`
+- `apps/web/lib/NavLinks.tsx`
+**Left / not done:**
+- Student Dashboard (Phase 7) — UI for students to view attendance, file disputes (if any UI is actually needed beyond Phase 6 disputes handling)
+- Operational tasks: backup/recovery, API rate limiting
+**Next session should start with:**
+- Review priority and decide if Phase 7 (Student Dashboard) is needed next, or if we move to Operational tasks.
+**Open questions for teammate:**
+- None
+**Blockers:**
+- None

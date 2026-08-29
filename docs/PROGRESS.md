@@ -32,6 +32,36 @@ with"** field first — that's the actual to-do list, not a summary to skim.
 ## Session log
 (Newest entry at top. Use the Entry Format above for every new one.)
 
+### 2026-08-29 — Session 4
+**Goal for this session:**
+Implement the Student Dashboard (Phase 7) — UI for students to view attendance and file disputes.
+**Done:**
+- Added `StudentDashboard` component to render student-specific UI in `app/page.tsx` when user.role is student.
+- Wrote `0027_enforce_role_based_access.sql` migration to enforce proper RLS limiting access to final_attendance, class_sessions, classes, and disputes per user role.
+- Made root layout async to fetch and pass the current role to `<NavLinks />` so navigation hides irrelevant views from students.
+- Updated `fileDispute` endpoint to revalidate the root path so the student dashboard reflects changes immediately.
+- Adjusted disputes UI (`app/disputes/page.tsx`) to conditionally hide dispute resolution controls and links if the user is a student.
+**Files changed:**
+- `apps/web/app/student-dashboard.tsx`
+- `apps/web/app/page.tsx`
+- `apps/web/app/layout.tsx`
+- `apps/web/app/disputes/page.tsx`
+- `apps/web/lib/enrollment/disputes.ts`
+- `supabase/migrations/0027_enforce_role_based_access.sql`
+**Left / not done:**
+- Operational tasks: Supabase database backup/recovery plan is still undefined (free tier limitation, spec Section 7 violation pending upgrade/script), API rate limiting.
+- Need to run `supabase migration up` manually.
+**Next session should start with:**
+- Run `supabase migration up` on the local database and review if Operational tasks (backups/rate-limits) need attention, or if we should move towards deployment/mock population for Phase 0 pilot.
+**Open questions for teammate:**
+- None.
+**Blockers:**
+- None.
+
+---
+
+
+
 ### 2026-08-29 — Session 3
 **Goal for this session:**
 Build the Teacher Dashboard (Phase 6) — dedicated attendance review, session attendance detail, and disputes management.

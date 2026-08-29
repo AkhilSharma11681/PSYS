@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import NavLinks from "@/lib/NavLinks";
 import LogoutButton from "@/lib/LogoutButton";
+import { createClient } from "@/lib/supabase/server";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -19,7 +20,22 @@ export const metadata: Metadata = {
   description: "Multi-tenant classroom attendance via face recognition",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  let role = "admin"; // defaults to admin so fallback logic in NavLinks works
+  if (user) {
+    const { data: profile } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+    if (profile) {
+      role = profile.role;
+    }
+  }
+
   return (
     <html
       lang="en"
@@ -30,7 +46,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           className="border-b px-6 py-3 flex items-center justify-between text-sm sticky top-0 z-10"
           style={{ background: 'var(--background)', borderColor: 'var(--border)', color: 'var(--foreground)' }}
         >
-          <NavLinks />
+          <NavLinks role={role} />
           <LogoutButton />
         </nav>
         <main className="flex-1">{children}</main>
