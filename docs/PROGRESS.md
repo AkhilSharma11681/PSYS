@@ -29,7 +29,48 @@ with"** field first — that's the actual to-do list, not a summary to skim.
 
 ---
 
-### 2026-08-30 — Session (two bugs + design restyle continuation)
+### 2026-08-30 — Session (light-theme restyle + 4 real bug fixes)
+**Goal for this session:** Restyle PSYS to a light-theme SaaS dashboard (Newton School-inspired), fix all bugs found during the process, audit every page, propagate restyles systematically.
+**Done:**
+- Full light-theme token swap in globals.css: palette (#F8FAFC bg, #FFFFFF surface, #0F172A text, #2563EB primary, #10B981/#F59E0B/#EF4444 status), Inter typography (weights 300/400/500/600/700), JetBrains Mono for data IDs, full .card/.badge/.btn/.field-input system.
+- Fixed @import ordering bug that broke Google Fonts (CSS spec: @import must precede all other rules; moved fonts to `<link>` in layout.tsx `<head>`).
+- Restyled attendance/[id] as the template page: stats → .card grid, 2-column layout with .info-rail aside, .badge-*, .btn-*, Inter tabular-nums on display numbers.
+- Fixed "Event handlers cannot be passed to Client Component props" crash: extracted scheduling form from server component into `classes/ScheduleSessionForm.tsx` ('use client') with onChange/setCustomValidity validation.
+- Fixed slashed-zero display on stat cards (JetBrains Mono → Inter font-sans tabular-nums).
+- Fixed real timezone bug in scheduleClassSession (classes.ts): the toUTC() offset sign was flipped — subtracting instead of adding getTimezoneOffset() caused sessions to save 5h30 off in IST; corrected to `+` and verified with exact before/after math (01:37 IST → 20:07 UTC prev day, confirmed).
+- Restyled Group 1 (4 pages): students/[id], students/new, cameras/page, settings/page — bg-black text-white buttons → .btn-primary/.btn-secondary, unstyled border inputs → .field-input, p-8 max-w-* layout → page-shell/page-inner, flat sections → .card.
+- Restyled Group 2 (disputes/page): dark leftovers removed (bg-black/40, bg-black/20, bg-black on select), disputes wrapped in .card, resolve form → .card-compact + .field-input.
+- Restyled Group 3 (page.tsx home): font-mono → font-sans tabular-nums on stat numbers, hover:bg-white/[0.03] removed, flat grid stats → individual .card.card-compact elements.
+- Fixed button height mismatch: .btn-primary vs .btn-secondary had different effective heights due to border-box math (1px border on secondary adds 2px to height that primary doesn't have); shared both to identical padding/height/border-radius with always-present border (transparent on primary); added .btn-primary-sm/.btn-secondary-sm for compact inline forms.
+- Fixed .field-input height mismatch against buttons: base class had no explicit height, taller padding (0.625rem vs 0.5rem), thicker border (1.5px vs 1px); now shares exact 2.25rem height, 0.5rem padding, 1px border, 1.25rem line-height with .btn-primary/.btn-secondary; added .field-input-sm variant; cleaned all ad-hoc py-1/px-3 overrides from attendance/[id], disputes/page, student-dashboard.tsx.
+- Full audit of all 17 page files completed (table with Button/Layout/Card issues per page).
+**Files changed:**
+- apps/web/app/globals.css (full token swap, .card/.badge/.btn/.field-input system, btn-sm variants)
+- apps/web/app/layout.tsx (Google Fonts via <link>)
+- apps/web/app/page.tsx (home restyle: .card stats, font-sans tabular-nums, hover:[0.03] removed)
+- apps/web/app/attendance/[id]/page.tsx (template restyle done in prior session)
+- apps/web/app/classes/ScheduleSessionForm.tsx (extracted 'use client' component)
+- apps/web/app/classes/[id]/page.tsx (uses ScheduleSessionForm)
+- apps/web/app/students/[id]/page.tsx (restyled: .btn-primary, .field-input, page-shell, .card)
+- apps/web/app/students/new/page.tsx (restyled: .btn-primary, .field-input, page-shell, .card)
+- apps/web/app/cameras/page.tsx (restyled: .btn-primary, .field-input, page-shell, .card)
+- apps/web/app/settings/page.tsx (restyled: .btn-primary, .field-input, page-shell, .card)
+- apps/web/app/disputes/page.tsx (dark leftovers removed, .card wrappers, .btn-primary-sm/.btn-secondary-sm)
+- apps/web/app/student-dashboard.tsx (.btn-primary-sm, .field-input-sm)
+- apps/web/lib/enrollment/classes.ts (timezone toUTC() sign corrected to +)
+- docs/PROGRESS.md (this entry)
+**Left / not done:**
+- Restyle propagation incomplete: classes/page, attendance/page, students/page, sessions/page, sessions/[id], sessions/review, checkins/page still need .card wrapping on .ledger sections and flat forms.
+- Enroll Student / Schedule Session row height verification pending browser check.
+- Test DB artifacts from Session 9 finalization still flagged for cleanup (session d444c450 fake observations + final_attendance).
+- Comprehensive seed script still not built.
+- Operational tasks (backup/recovery, rate limiting) still untouched.
+**Next session should start with:**
+- Run the full-page audit again (or reference the one already done) and finish propagating .card/.btn/.field-input consistently to every remaining page, verifying each in the browser before moving to the next — go slow, this session found real bugs (timezone sign flip, button/input height mismatch) by checking the browser rather than trusting code review alone.
+**Open questions for teammate:**
+- Confirm camera-service /finalize auth flow: should it require JWT from web auth session, or service-role callable for admin? (From Session 9 entry — still open.)
+**Blockers:**
+- None.
 **Goal for this session:** Fix Bug 1 (timezone on session scheduling) and Bug 2 (stale UI after student update); confirm both; update PROGRESS.md per session-end rule.
 **Done:**
 - Bug 1 (timezone): toUTC() added in lib/enrollment/classes.ts; datetime-local now converts to correct UTC equiv (not 6am offset). Form validation kept (end > start).
