@@ -44,14 +44,38 @@ All three are linked to institution "Test University"
 Passwords are kept out of this file intentionally — check the local `apps/web/.env.local`
 gitignored dev notes, or reset via the Supabase dashboard.
 
-Note: `student@test.local` has no `students` row yet, so the student dashboard at `/`
-will show "Your account is not linked to a student record" until a `students` row with
-`user_id = 68714a6a-86ce-405f-a2fb-e5565648e772` is created.
+Note: `student@test.local` now has a `students` row (Aisha Mehta, roll PS-2026-084, institution "Test University", consent_given=true).
 
 ---
 
 ## Session log
 (Newest entry at top. Use the Entry Format above for every new one.)
+
+### 2026-08-29 — Session 7
+**Goal for this session:**
+Manual end-to-end testing of the app with three newly created test accounts (admin, teacher, student) to verify shipped features and identify remaining gaps.
+**Done:**
+- Verified dispute resolution works end-to-end: camera-service was confirmed runnable locally (`uvicorn app.main:app --reload --port 8000`), `POST /disputes/{id}/resolve` is implemented with proper auth checks.
+- Confirmed enrollment pipeline works end-to-end: photo upload → `enrollment_jobs` → enrollment-worker (polls every 5s) → calls `POST /internal/embed` on camera-service → writes to `student_biometrics` → deletes source photo. Three services must be running: Next.js (port 3000), camera-service (port 8000), enrollment-worker (separate Python process).
+- Confirmed permitted exits (`markPermittedExit`, `recordReturn`) work.
+- Confirmed bulk import works.
+- Confirmed student dashboard renders at `/` for `role=student` (component, not a separate route).
+- Confirmed StudentDashboard links to a `students` row via `user_id` — created one for `student@test.local` (Aisha Mehta, roll PS-2026-084).
+- Confirmed RLS recursion bug (class_sessions ↔ final_attendance) was found and fixed in migrations 0029 and 0030 (SECURITY DEFINER helpers with pinned search_path).
+- **Found and documented a new gap:** no class creation UI exists, and no `createClass()`/`scheduleClassSession()` server actions exist. `classes` and `class_sessions` can only be populated via direct DB insert. Blocks testing of sessions/attendance/finalization through the actual UI.
+- Confirmed camera-service SETUP.md documents the deployed Render URL (`https://psys-camera-service.onrender.com`) and `/tick` endpoint for cron keepalive.
+**Files changed:**
+- `docs/PROGRESS.md`
+**Left / not done:**
+- Class creation UI + server actions (newly discovered gap, see above).
+- Comprehensive seed script (per Session 5 carry-over) still not created.
+- Operational tasks: backup/recovery, API rate limiting.
+**Next session should start with:**
+- User to choose: build class creation UI + server actions, create the seed script (per Session 5), or tackle operational tasks (backup/rate-limiting).
+**Open questions for teammate:**
+- None.
+**Blockers:**
+- None.
 
 ### 2026-08-29 — Session 6
 **Goal for this session:**
@@ -65,6 +89,7 @@ Create three test accounts (admin, teacher, student) for manual UI testing, all 
 **Files changed:**
 - `docs/PROGRESS.md`
 **Left / not done:**
+- **Newly discovered gap (not carried over):** Class creation UI + server actions do not exist. `classes` and `class_sessions` can currently only be populated via direct DB insert. This blocks testing of sessions, attendance review, and finalization through the actual UI. Needs `createClass()` and `scheduleClassSession()` server actions plus a form, likely on `/settings` or a new `/classes` route.
 - `student@test.local` has no `students` row yet — student dashboard will show the "Your account is not linked to a student record" message until a `students` row with `user_id = 68714a6a-86ce-405f-a2fb-e5565648e772` is created.
 - Comprehensive seed script (per Session 5 carry-over) still not created.
 - Operational tasks: backup/recovery, API rate limiting.
