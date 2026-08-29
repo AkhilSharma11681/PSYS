@@ -35,9 +35,37 @@ export async function updateAttendanceConfig(formData: FormData) {
   const user = await getCurrentUser()
   const supabase = await createClient()
 
-  const { error } = await supabase
+  // Check if an institution-specific row already exists; if not, we must
+  // INSERT (not update the platform-default row which belongs to no institution).
+  const { data: existing } = await supabase
     .from('attendance_config')
-    .update({
+    .select('id')
+    .eq('institution_id', user.institution_id)
+    .eq('is_active', true)
+    .maybeSingle()
+
+  if (existing) {
+    const { error } = await supabase
+      .from('attendance_config')
+      .update({
+        present_threshold: presentThreshold,
+        left_early_threshold: leftEarlyThreshold,
+        min_valid_observations: minValidObservations,
+        max_gap_minutes: maxGapMinutes,
+        quorum_fraction: quorumFraction,
+        min_quorum_count: minQuorumCount,
+        capture_buffer_minutes: captureBufferMinutes,
+        dispute_window_hours: disputeWindowHours,
+        version: 2,
+      })
+      .eq('id', existing.id)
+
+    if (error) {
+      throw new Error(`Failed to update attendance config: ${error.message}`)
+    }
+  } else {
+    const { error } = await supabase.from('attendance_config').insert({
+      institution_id: user.institution_id,
       present_threshold: presentThreshold,
       left_early_threshold: leftEarlyThreshold,
       min_valid_observations: minValidObservations,
@@ -46,12 +74,13 @@ export async function updateAttendanceConfig(formData: FormData) {
       min_quorum_count: minQuorumCount,
       capture_buffer_minutes: captureBufferMinutes,
       dispute_window_hours: disputeWindowHours,
+      is_active: true,
+      version: 1,
     })
-    .eq('institution_id', user.institution_id)
-    .eq('is_active', true)
 
-  if (error) {
-    throw new Error(`Failed to update attendance config: ${error.message}`)
+    if (error) {
+      throw new Error(`Failed to create attendance config: ${error.message}`)
+    }
   }
 
   revalidatePath('/settings')

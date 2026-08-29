@@ -90,6 +90,9 @@ export async function scheduleClassSession(classId: string, formData: FormData) 
   const scheduledEnd = formData.get('scheduled_end') as string
 
   if (!scheduledStart || !scheduledEnd) throw new Error('Both start and end times are required')
+  if (new Date(scheduledEnd) <= new Date(scheduledStart)) {
+    throw new Error('Scheduled end must be after scheduled start')
+  }
 
   checkRateLimit(`scheduleClassSession:${user.institution_id}`, 20, 60_000)
   const supabase = await createClient()

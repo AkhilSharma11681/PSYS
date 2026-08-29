@@ -6,20 +6,44 @@ export default async function SettingsPage() {
   const user = await getCurrentUser()
   const supabase = await createClient()
 
-  const { data: config } = await supabase
+  // Try institution-specific row first, then fall back to platform default
+  // (institution_id IS NULL). Per ARCHITECTURE.md, get_recognition_config()
+  // implements the same fallback on the camera-service side; the settings
+  // page must show the same effective values the finalization will use.
+  const { data: institutionConfig } = await supabase
     .from('attendance_config')
     .select('*')
     .eq('institution_id', user.institution_id)
     .eq('is_active', true)
-    .single()
+    .maybeSingle()
 
-  if (!config) {
-    return <div className="p-8">No attendance config found for this institution.</div>
+  const { data: platformConfig } = await supabase
+    .from('attendance_config')
+    .select('*')
+    .is('institution_id', null)
+    .eq('is_active', true)
+    .maybeSingle()
+
+  if (!institutionConfig && !platformConfig) {
+    return <div className="p-8">No attendance config found for this institution or platform default.</div>
   }
+
+  const config = institutionConfig ?? platformConfig
+  const usingFallback = !institutionConfig
 
   return (
     <div className="p-8 max-w-lg mx-auto">
       <h1 className="text-2xl font-semibold mb-1">Attendance Settings</h1>
+      {usingFallback && (
+        <p className="text-xs px-3 py-2 rounded border mb-4" style={{
+          background: 'var(--surface)',
+          borderColor: 'var(--accent)',
+          color: 'var(--accent)',
+        }}>
+          No institution-specific config exists — using platform defaults.
+          Saving any change will create an institution override.
+        </p>
+      )}
       <p className="text-sm text-gray-500 mb-6">
         Spec Section 5, Phase E — these thresholds drive finalization
         (quorum detection, presence scoring, gap-check). Changes apply to

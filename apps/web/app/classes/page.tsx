@@ -37,29 +37,31 @@ export default async function ClassesPage() {
         </div>
         <p className="page-subtitle">{classes?.length ?? 0} class{classes?.length !== 1 ? 'es' : ''}</p>
 
-        <form action={createClass} className="mb-8 border rounded-lg p-5" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-          <h3 className="text-base font-semibold mb-3">Create New Class</h3>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-            <div>
-              <label className="field-label">Subject</label>
-              <input name="subject" required placeholder="e.g. Mathematics" className="field-input" />
+        {user.role === 'admin' && (
+          <form action={createClass} className="mb-8 border rounded-lg p-5" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+            <h3 className="text-base font-semibold mb-3">Create New Class</h3>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <div>
+                <label className="field-label">Subject</label>
+                <input name="subject" required placeholder="e.g. Mathematics" className="field-input" />
+              </div>
+              <div>
+                <label className="field-label">Room</label>
+                <select name="room_id" required className="field-input">
+                  <option value="">Select a room</option>
+                  {rooms?.map((r) => (
+                    <option key={r.id} value={r.id}>{r.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="field-label">Recurrence (e.g. MON,WED 09:00-10:00)</label>
+                <input name="recurrence" placeholder="Optional" className="field-input" />
+              </div>
             </div>
-            <div>
-              <label className="field-label">Room</label>
-              <select name="room_id" required className="field-input">
-                <option value="">Select a room</option>
-                {rooms?.map((r) => (
-                  <option key={r.id} value={r.id}>{r.name}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="field-label">Recurrence (e.g. MON,WED 09:00-10:00)</label>
-              <input name="recurrence" placeholder="Optional" className="field-input" />
-            </div>
-          </div>
-          <button type="submit" className="btn-primary mt-4">Create Class</button>
-        </form>
+            <button type="submit" className="btn-primary mt-4">Create Class</button>
+          </form>
+        )}
 
         {classes && classes.length === 0 ? (
           <p className="text-sm" style={{ color: 'var(--muted)' }}>No classes yet. Create one above.</p>

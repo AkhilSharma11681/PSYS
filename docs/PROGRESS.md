@@ -260,3 +260,38 @@ Update DECISIONS.md to reflect shipped Phase 5 implementation and remove stale e
 - None — Phase 5 handoff is complete, both sides have shipped their code
 **Blockers:**
 - None
+
+### 2026-08-29 — Session 9 (finalization testing)
+**Goal for this session:**
+Fix maths session scheduling bug (end < start), add client + server validation for session scheduling form, apply/verify 0031, lower min_quorum_count to 1, run zero-observation finalize pass, insert fake observations, run full finalize with gap logic.
+**Done:**
+- Added HTML5 onChange validation and server-side `end <= start` guard to `scheduleClassSession`; documented in DECISIONS.md.
+- Confirmed 0031 already applied (institution config exists). Confirmed Aisha biometrics (`8efbceb2-...`).
+- Fixed maths session `scheduled_end` (was 13:00, now 01:00 next day). Not timezone — missing validation.
+- Pass 1 (zero obs): `finalized_at` claimed, `processing_status = needs_review`, `quorum_not_reached`, zero final_attendance.
+- Pass 2 (fake obs: 12 matched across 4 rounds, gap 15min > 10): `status = left_early`, `presence_score = 1.0`, `actual_start=23:05`, `actual_end=23:50`.
+- Wrote/removed `test_finalize_maths.py`; kept test DB state (dev only).
+
+**⚠️ TEST DATA LEFTOVER IN DB (do not mistake for real):**
+The following rows in the remote DB are dev/test artifacts from this session, NOT real production data:
+- `class_sessions.d444c450-...` (maths) — `processing_status=finalized`, `actual_start=23:05`, `actual_end=23:50`
+- `attendance_observations` — 12 synthetic rows for Aisha (bdfacf52), 4 capture rounds
+- `final_attendance` — 1 row, Aisha, `status=left_early`, `presence_score=1.0`
+- `attendance_config` for institution 70881552 — `min_quorum_count` was set to 1 for the test, **already reverted to 4**
+
+Clean up via SQL before any real pilot data is loaded. The fake data passes the left_early logic but is structurally perfect test data (same student, no camera issues, single gap).
+**Files changed:**
+- `apps/web/app/classes/[id]/page.tsx` (client validation)
+- `apps/web/lib/enrollment/classes.ts` (server validation)
+- `docs/DECISIONS.md` (two entries added)
+- `docs/PROGRESS.md` (this entry)
+- `supabase/migrations/0031_...` (pre-existing, applied)
+**Left / not done:**
+- No real camera-service endpoint call (used DB-level simulation instead of curl with JWT).
+- Test DB state (fake observations + final_attendance) remains — could clean before any real pilot data.
+**Next session should start with:**
+- Clean test data (delete fake observations + final_attendance for session d444c450) if needed; or move to Phase F review queue / operational tasks (backup, rate limits per Session 5 carry-over).
+**Open questions for teammate:**
+- Confirm camera-service endpoint auth flow — should /finalize require a token from the web auth session, or should it be callable via service role for admin? (Current implementation uses depend(get_current_user) which requires a JWT from the institution user.)
+**Blockers:**
+- None.
