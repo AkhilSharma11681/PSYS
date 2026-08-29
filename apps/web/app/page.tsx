@@ -42,6 +42,7 @@ export default async function DashboardPage() {
 
   const quickLinks = [
     { label: 'Add a student', desc: 'Enroll one student with a photo', href: '/students/new' },
+    { label: 'Manage classes', desc: 'Create a class, enroll students, schedule sessions', href: '/classes' },
     { label: 'Bulk import', desc: 'Enroll many students from a CSV', href: '/students/bulk-import' },
     { label: 'Review attendance', desc: 'Assess marked sessions and finalizations', href: '/attendance' },
     { label: 'Sync check-ins', desc: 'Import external device data', href: '/checkins' },

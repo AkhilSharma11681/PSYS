@@ -51,6 +51,34 @@ Note: `student@test.local` now has a `students` row (Aisha Mehta, roll PS-2026-0
 ## Session log
 (Newest entry at top. Use the Entry Format above for every new one.)
 
+### 2026-08-29 — Session 8
+**Goal for this session:**
+Build class creation UI and server actions to close the gap identified in Session 7.
+**Done:**
+- Created `lib/enrollment/classes.ts` with three server actions: `createClass()` (admin-only, auto-sets teacher_id to auth.uid()), `enrollStudent()` (admin/teacher), `scheduleClassSession()` (admin/teacher, sets safe defaults: status=scheduled, camera_status=unknown, processing_status=pending, roster_source=full_enrollment_fallback).
+- Created `app/classes/page.tsx`: class list with room/student counts, inline "Create New Class" form (subject, room select, recurrence).
+- Created `app/classes/[id]/page.tsx`: class detail with enrolled student list, "Enroll Student" select form, "Schedule Session" date/time form, and upcoming sessions list.
+- Added "Classes" to NavLinks (admin/teacher visible).
+- Added "Manage classes" Quick Action to dashboard.
+- Recorded three design decisions in DECISIONS.md (admin-as-teacher, minimal session defaults, roster_source pre-set).
+**Files changed:**
+- `apps/web/lib/enrollment/classes.ts` (created)
+- `apps/web/app/classes/page.tsx` (created)
+- `apps/web/app/classes/[id]/page.tsx` (created)
+- `apps/web/lib/NavLinks.tsx`
+- `apps/web/app/page.tsx`
+- `docs/DECISIONS.md`
+- `docs/PROGRESS.md`
+**Left / not done:**
+- Comprehensive seed script (per Session 5 carry-over) still not created.
+- Operational tasks: backup/recovery, API rate limiting.
+**Next session should start with:**
+- User to choose: seed script (per Session 5) or operational tasks (backup/rate-limiting).
+**Open questions for teammate:**
+- None.
+**Blockers:**
+- None.
+
 ### 2026-08-29 — Session 7
 **Goal for this session:**
 Manual end-to-end testing of the app with three newly created test accounts (admin, teacher, student) to verify shipped features and identify remaining gaps.
@@ -89,8 +117,7 @@ Create three test accounts (admin, teacher, student) for manual UI testing, all 
 **Files changed:**
 - `docs/PROGRESS.md`
 **Left / not done:**
-- **Newly discovered gap (not carried over):** Class creation UI + server actions do not exist. `classes` and `class_sessions` can currently only be populated via direct DB insert. This blocks testing of sessions, attendance review, and finalization through the actual UI. Needs `createClass()` and `scheduleClassSession()` server actions plus a form, likely on `/settings` or a new `/classes` route.
-- `student@test.local` has no `students` row yet — student dashboard will show the "Your account is not linked to a student record" message until a `students` row with `user_id = 68714a6a-86ce-405f-a2fb-e5565648e772` is created.
+- Class creation gap — CLOSED in Session 7 (createClass, enrollStudent, scheduleClassSession server actions + /classes route with list/form/detail). See new entry below for full details.
 - Comprehensive seed script (per Session 5 carry-over) still not created.
 - Operational tasks: backup/recovery, API rate limiting.
 **Next session should start with:**

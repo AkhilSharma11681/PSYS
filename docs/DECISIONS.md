@@ -46,3 +46,14 @@
   `0010_external_checkin_events.sql` and `0028_session_roster_derivation.sql` because
   Supabase migration history uses the version number as its primary key and cannot record two
   files under one version.
+- **SECURITY DEFINER helper functions used for RLS policies with cross-table checks.** Found
+  an infinite recursion bug when `class_sessions` queried `final_attendance`, which in turn
+  queried `class_sessions` to verify teacher assignment. Moving the cross-table queries into
+  `SECURITY DEFINER` helpers bypasses RLS on the inner check and prevents the loop (fixed in 0029).
+- **All SECURITY DEFINER functions must pin `search_path = public, pg_temp`** to prevent
+  search_path hijacking. Applied to `is_teacher_for_session`, `is_student_in_session`, and
+  `current_student_id` in migration 0030. Also DRY'd `is_student_in_session` to call
+  `public.current_student_id()` instead of duplicating the student lookup logic.
+- **Class creation server actions and UI added (Session 7).** createClass() sets teacher_id = auth.uid() (admin creating = teacher) rather than accepting a teacher_id form field — keeps the form minimal; the teacher dropdown from the plan was omitted for simplicity.
+- **session scheduling only requires scheduled_start / scheduled_end.** All other class_sessions columns (camera_id, actual_start, actual_end, finalized_at, camera_status, processing_status, roster_source) are set to safe defaults; camera-service fills live values during finalization.
+- **roster_source pre-set to 'full_enrollment_fallback'** on session insert so derive_session_roster() never hits a null constraint.
