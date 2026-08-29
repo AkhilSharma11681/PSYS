@@ -155,15 +155,16 @@ Per-institution thresholds (all configurable, never hardcoded):
 ### Operational monitoring
 - `processing_metrics` — aggregate counters (frames attempted/succeeded, latency) per session
 
-## Migration history (as of 2026-08-28)
+## Migration history (as of 2026-08-29)
 
-Current highest: `0025_enrollment_jobs_retry_count.sql`
+Current highest: `0028_session_roster_derivation.sql`
 
 Key migrations:
 - `0002` — Replaced stub `students`/`student_biometrics` with real schema
 - `0008` — `classes` and `class_enrollments`
 - `0009` — Upgraded `class_sessions` from stub (teammate's side)
-- `0010` (two files) — `external_checkin_events` and `derive_session_roster()`
+- `0010` — `external_checkin_events`
+- `0028` — `derive_session_roster()` (renumbered from duplicate `0010` migration)
 - `0015` — Idempotency constraint on `attendance_observations`
 - `0016` — `session_exceptions`, `final_attendance`, `get_session_exceptions()` RPC
 - `0017` — Unique constraint on `attendance_config.institution_id`

@@ -42,3 +42,7 @@
 - **Every dispute resolution logged to `audit_logs`.** Spec requirement: every human decision is
   recorded. Two log entries if attendance is also corrected: one for the dispute, one for the
   final_attendance change.
+- **Every migration version must be unique.** The duplicate `0010` migrations were split into
+  `0010_external_checkin_events.sql` and `0028_session_roster_derivation.sql` because
+  Supabase migration history uses the version number as its primary key and cannot record two
+  files under one version.

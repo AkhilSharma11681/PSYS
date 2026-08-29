@@ -32,6 +32,32 @@ with"** field first — that's the actual to-do list, not a summary to skim.
 ## Session log
 (Newest entry at top. Use the Entry Format above for every new one.)
 
+### 2026-08-29 — Session 5
+**Goal for this session:**
+Repair the remote Supabase migration history, apply pending migrations, and verify their resulting schema artifacts.
+**Done:**
+- Verified the remote schema had migrations through `0025` applied despite an empty migration-history table, then repaired remote history through `0025`.
+- Found that the duplicate `0010` filenames could not both be recorded because Supabase uses migration version as the history table primary key; renamed `0010_session_roster_derivation.sql` to `0028_session_roster_derivation.sql`.
+- Applied `0026_enrollment_photos_storage_policies.sql`, `0027_enforce_role_based_access.sql`, and `0028_session_roster_derivation.sql` to the linked remote project.
+- Verified all 28 migration versions are synchronized between repository migration files and remote history.
+- Verified the two `0026` Storage policies and the student- and teacher-scoped `class_sessions` select policy from `0027` now exist on the remote database.
+- Updated migration documentation and recorded the unique-version migration decision.
+**Files changed:**
+- `supabase/migrations/0010_session_roster_derivation.sql` (renamed to `0028_session_roster_derivation.sql`)
+- `docs/ARCHITECTURE.md`
+- `docs/DECISIONS.md`
+- `docs/PROGRESS.md`
+**Left / not done:**
+- No existing seed or fixture data was found; comprehensive Phase 0 test seed data remains to be created.
+- Local Supabase has not been started because Docker Desktop is not installed; the linked remote database was migrated and verified instead.
+- Operational tasks: Supabase backup/recovery plan remains undefined and API rate limiting is not yet implemented.
+**Next session should start with:**
+- Create the requested comprehensive seed script for two institutions, consented students, enrollments, quorum/no-quorum/gap scenarios, capture failures, check-ins, and a permitted-exit window; do not execute it until requested.
+**Open questions for teammate:**
+- None.
+**Blockers:**
+- Docker Desktop is not installed, so local Supabase cannot run until it is installed and started.
+
 ### 2026-08-29 — Session 4
 **Goal for this session:**
 Implement the Student Dashboard (Phase 7) — UI for students to view attendance and file disputes.
