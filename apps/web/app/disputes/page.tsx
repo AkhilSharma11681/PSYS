@@ -118,7 +118,7 @@ export default async function DisputesPage({
 
                     {d.status === 'pending' && user.role !== 'student' && (
                       <form action={resolveDispute.bind(null, d.id, d.final_attendance?.session_id)} className="mt-auto card-compact p-3 border flex gap-3 items-center" style={{ borderColor: 'var(--border)' }}>
-                        <select name="resolved_status_for_attendance" className="field-input py-1 text-sm !w-40">
+                        <select name="resolved_status_for_attendance" className="field-input-sm !w-40">
                           <option value="">Keep current status</option>
                           <option value="present">Override to Present</option>
                           <option value="absent">Override to Absent</option>

@@ -95,7 +95,7 @@ export async function scheduleClassSession(classId: string, formData: FormData) 
     const [datePart, timePart] = s.split('T')
     const [year, month, day] = datePart.split('-').map(Number)
     const [hour, minute, second = 0] = (timePart || '00:00').split(':').map(Number)
-    const localMs = Date.UTC(year, month - 1, day, hour, minute, second) - (new Date().getTimezoneOffset() * 60000)
+    const localMs = Date.UTC(year, month - 1, day, hour, minute, second) + (new Date().getTimezoneOffset() * 60000)
     return new Date(localMs).toISOString()
   }
   const scheduledStartISO = toUTC(scheduledStart)

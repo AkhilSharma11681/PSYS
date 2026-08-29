@@ -55,22 +55,19 @@ export default async function DashboardPage() {
         <p className="page-eyebrow">Roll Register</p>
         <h1 className="page-title">Dashboard</h1>
         <p className="page-subtitle">
-          {user.full_name} · <span className="capitalize">{user.role}</span>
+          {user.full_name} &middot; <span className="capitalize">{user.role}</span>
         </p>
 
-        <div
-          className="grid grid-cols-2 sm:grid-cols-5 mb-12 border-t"
-          style={{ borderColor: 'var(--border)' }}
-        >
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-12">
           {stats.map((s) => (
             <Link
               key={s.label}
               href={s.href}
-              className="px-4 py-5 border-b border-r first:border-l transition-colors hover:bg-white/[0.03]"
+              className="card card-compact text-center transition-colors"
               style={{ borderColor: 'var(--border)' }}
             >
               <div
-                className="text-4xl font-mono tabular-nums font-semibold"
+                className="font-sans text-3xl font-semibold tabular-nums"
                 style={{ color: s.attention ? 'var(--accent-warn)' : 'var(--accent-good)' }}
               >
                 {String(s.value).padStart(2, '0')}

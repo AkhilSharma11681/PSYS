@@ -169,13 +169,13 @@ export default async function SessionAttendancePage({
                           <form className="card-compact" style={{ border: '1px solid var(--border)' }} action={resolveReviewItem.bind(null, item.id, id)}>
                             <div className="text-xs uppercase tracking-wide mb-2" style={{ color: 'var(--text-muted)' }}>Resolve Override</div>
                             <div className="flex gap-2 items-center">
-                              <select name="new_status" required className="field-input py-1 text-sm !w-32">
+                              <select name="new_status" required className="field-input-sm !w-32">
                                 <option value="">Status...</option>
                                 <option value="present">Present</option>
                                 <option value="absent">Absent</option>
                                 <option value="left_early">Left Early</option>
                               </select>
-                              <input type="text" name="notes" placeholder="Notes (optional)" className="field-input py-1 text-sm !w-40" />
+                              <input type="text" name="notes" placeholder="Notes (optional)" className="field-input-sm !w-40" />
                               <button type="submit" className="btn-secondary-sm">Save</button>
                             </div>
                           </form>

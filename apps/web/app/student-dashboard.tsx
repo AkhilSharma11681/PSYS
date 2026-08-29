@@ -194,7 +194,7 @@ export default async function StudentDashboard({ user }: { user: any }) {
                                 name="reason" 
                                 placeholder="Reason for dispute..." 
                                 required 
-                                className="field-input py-1 text-xs" 
+                                className="field-input-sm" 
                                 style={{ width: '12rem' }}
                               />
                               <button type="submit" className="btn-primary-sm">Submit</button>
