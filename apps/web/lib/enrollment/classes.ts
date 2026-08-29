@@ -89,8 +89,20 @@ export async function scheduleClassSession(classId: string, formData: FormData) 
   const scheduledStart = formData.get('scheduled_start') as string
   const scheduledEnd = formData.get('scheduled_end') as string
 
+  const toUTC = (s: string) => {
+    // datetime-local input: "2026-08-30T13:00" (browser local, no timezone).
+    // Read as local wall-clock time, compute UTC equivalent so DB gets correct instant.
+    const [datePart, timePart] = s.split('T')
+    const [year, month, day] = datePart.split('-').map(Number)
+    const [hour, minute, second = 0] = (timePart || '00:00').split(':').map(Number)
+    const localMs = Date.UTC(year, month - 1, day, hour, minute, second) - (new Date().getTimezoneOffset() * 60000)
+    return new Date(localMs).toISOString()
+  }
+  const scheduledStartISO = toUTC(scheduledStart)
+  const scheduledEndISO = toUTC(scheduledEnd)
+
   if (!scheduledStart || !scheduledEnd) throw new Error('Both start and end times are required')
-  if (new Date(scheduledEnd) <= new Date(scheduledStart)) {
+  if (scheduledEndISO <= scheduledStartISO) {
     throw new Error('Scheduled end must be after scheduled start')
   }
 
@@ -113,8 +125,8 @@ export async function scheduleClassSession(classId: string, formData: FormData) 
     .insert({
       institution_id: user.institution_id,
       class_id: classId,
-      scheduled_start: scheduledStart,
-      scheduled_end: scheduledEnd,
+      scheduled_start: scheduledStartISO,
+      scheduled_end: scheduledEndISO,
       status: 'scheduled',
       roster_source: 'full_enrollment_fallback',
       camera_status: 'unknown',

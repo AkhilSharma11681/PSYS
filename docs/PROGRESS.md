@@ -29,6 +29,36 @@ with"** field first — that's the actual to-do list, not a summary to skim.
 
 ---
 
+### 2026-08-30 — Session (two bugs + design restyle continuation)
+**Goal for this session:** Fix Bug 1 (timezone on session scheduling) and Bug 2 (stale UI after student update); confirm both; update PROGRESS.md per session-end rule.
+**Done:**
+- Bug 1 (timezone): toUTC() added in lib/enrollment/classes.ts; datetime-local now converts to correct UTC equiv (not 6am offset). Form validation kept (end > start).
+- Bug 2 (stale UI): confirmed revalidatePath('/students/${id}') present at actions.ts:153 (updateStudent) and 172 (confirmConsent); server-action form submit triggers page refresh by default; no missing call.
+- Event-handler crash fixed (ScheduleSessionForm.tsx extracted, 'use client').
+- Attendance/[id] template restyle complete (.card, .badge-*, .btn-*, .info-rail, Inter typography, tabular-nums on stats, dark leftovers cleaned, font-mono → font-sans).
+- Google Fonts loaded via `<link>` in layout.tsx (fixed @import ordering violation).
+**Files changed:**
+- apps/web/lib/enrollment/classes.ts (toUTC + server validation)
+- apps/web/lib/enrollment/actions.ts (verified, no edit needed — revalidatePath present)
+- apps/web/app/classes/ScheduleSessionForm.tsx (created)
+- apps/web/app/classes/[id]/page.tsx (uses ScheduleSessionForm)
+- apps/web/app/globals.css (done in prior session, unchanged)
+- apps/web/app/layout.tsx (Google Fonts `<link>`, done prior)
+- apps/web/app/attendance/[id]/page.tsx (template restyle, done prior)
+- docs/PROGRESS.md (this entry)
+**Left / not done:**
+- Component-level restyle propagation to classes/, disputes/, attendance/ pages (only attendance/[id] done as template).
+- Clean test DB artifacts (session d444c450 fake observations/final_attendance from Session 9) if real pilot loads.
+- Operational tasks (backup/recovery plan, API rate limits) — carrying over from Session 5.
+**Next session should start with:**
+- Propagate .card/.badge/.btn restyle from attendance/[id] to classes/page + [id], disputes/page, attendance/page, page.tsx dashboard; OR clean test artifacts / start operational tasks; OR commit current work.
+**Open questions for teammate:**
+- Confirm camera-service /finalize auth flow: should it require JWT from web auth session, or service-role callable for admin? (From Session 9 entry — still open.)
+**Blockers:**
+- None.
+
+---
+
 ## Test accounts (manual UI testing)
 
 Three Supabase Auth users exist on the linked remote project for manual testing.
@@ -293,5 +323,45 @@ Clean up via SQL before any real pilot data is loaded. The fake data passes the 
 - Clean test data (delete fake observations + final_attendance for session d444c450) if needed; or move to Phase F review queue / operational tasks (backup, rate limits per Session 5 carry-over).
 **Open questions for teammate:**
 - Confirm camera-service endpoint auth flow — should /finalize require a token from the web auth session, or should it be callable via service role for admin? (Current implementation uses depend(get_current_user) which requires a JWT from the institution user.)
+**Blockers:**
+- None.
+
+### 2026-08-30 — Session (design-system swap)
+**Goal for this session:** Restyle PSYS UI to modern SaaS LMS light theme (Newton-style card dashboard) per user request — full palette swap from dark to light. Inter-only typography (no serif) per user correction.
+**Done:**
+- Proposed design system before writing code: light palette (`#F8FAFC` bg, `#FFFFFF` surface, `#0F172A` text, `#2563EB` blue primary, `#10B981`/`#F59E0B`/`#EF4444` status), Inter for headings + body (weight-based hierarchy: 600 headings / 400 body / 500 labels) + JetBrains Mono for data, `rounded-2xl` cards with `shadow-sm` and `#E2E8F0` border, right-side info-rail layout.
+- Wrote full token swap to `apps/web/app/globals.css`: replaced dark theme tokens, added Google Fonts import (Inter 300/400/500/600/700, JetBrains Mono 400/500), introduced `.card` (rounded-2xl, soft shadow, hover lift) and `.card-compact` for compact widgets, added `.info-rail` for the right-side review/session panel pattern, restyled badges (`.badge-good`/`.badge-warn`/`.badge-bad` with soft fills + colored borders matching the new status hexes), buttons (`.btn-primary` blue with subtle shadow + hover lift, `.btn-secondary` white with border, `.btn-ghost` blue text), forms (`.field-input` with focus ring on primary), and links (`.link-accent` blue with offset underline).
+- Confirmed Inter-only typography (no Playfair / serif) per user correction.
+**Files changed:**
+- `apps/web/app/globals.css` (rewritten — full light-theme token swap, font import, `.card` / `.info-rail` additions, badge/button/form restyles)
+- `docs/PROGRESS.md` (this entry)
+**Left / not done:**
+- Component-level restyles not done — only the token layer (`.card`, `.badge-*`, `.btn-*`, `.field-*` classes) is in place; existing pages (`app/classes/page.tsx`, `app/classes/[id]/page.tsx`, `app/attendance/page.tsx`, `app/attendance/[id]/page.tsx`, `app/disputes/page.tsx`, `app/page.tsx`) still use the old `page-shell` / `ledger-row` patterns and need to be migrated to `.card` + 2-col grid + info-rail.
+- No visual verification yet (browser render not run).
+**Next session should start with:**
+- Apply `.card` / `.badge-*` / `.btn-*` restyles to the attendance detail page (`app/attendance/[id]/page.tsx`) as the template (highest info density + info-rail most useful), then propagate to `app/classes/page.tsx`, `app/classes/[id]/page.tsx`, `app/disputes/page.tsx`, and the home dashboard.
+**Open questions for teammate:**
+- None — design change is web-side only. No shared tables touched, no migration needed.
+**Blockers:**
+- None.
+
+### 2026-08-31 — Session (client-component fix + stat zero + dark-leftover cleanup)
+**Goal for this session:** Fix the "Event handlers cannot be passed to Client Component props" crash on /classes/[id] (session scheduling form onChange handlers inside a Server Component), clean dark-theme leftovers on the attendance template, and fix the slashed-zero stat-display cosmetic.
+**Done:**
+- Extracted scheduling validation (onChange + setCustomValidity on scheduled_start / scheduled_end) from server component `app/classes/[id]/page.tsx` into a new `'use client'` component `app/classes/ScheduleSessionForm.tsx`; rendered via `<ScheduleSessionForm classId={id} />`. Server-side `scheduleClassSession()` validation untouched.
+- Removed `fileDispute` / `resolveDispute` unused imports from `app/attendance/[id]/page.tsx`; cleaned `bg-white/5`, `bg-transparent`, `text-white/80`, `text-white/70`, and `bg-black/60` dark-theme leftovers (replaced with `.card-compact`, `.field-input`, `var(--text-secondary)`, `bg-black/70` for the photo hover overlay).
+- Fixed stat card zero display: `font-mono` → `font-sans tabular-nums` (Inter plain zero at large display size; JetBrains Mono kept for small roll / data IDs where the slashed zero is correct).
+**Files changed:**
+- `apps/web/app/classes/ScheduleSessionForm.tsx` (created)
+- `apps/web/app/classes/[id]/page.tsx` (onChange removed; form replaced with client component; scheduleClassSession import dropped since the form now lives in the client component)
+- `apps/web/app/attendance/[id]/page.tsx` (dark-theme leftovers removed; stat numbers switched to font-sans tabular-nums; unused imports cleaned)
+- `docs/PROGRESS.md` (this entry)
+**Left / not done:**
+- Verify /classes/[id] loads in browser with the new client form (server :3000 hot-reloads; cannot curl with classifier interruption).
+- Verify end-must-be-after-start UX validation triggers on bad start/end (client-side setCustomValidity preserved in ScheduleSessionForm).
+**Next session should start with:**
+- Open /classes/[id] in browser to confirm no "Event handlers cannot be passed" error and the start/end validation still triggers on bad inputs.
+**Open questions for teammate:**
+- None — fix is web-side only (no shared table / camera-service impact; no migration).
 **Blockers:**
 - None.
