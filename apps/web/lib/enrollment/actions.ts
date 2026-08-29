@@ -1,23 +1,20 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/admin'
 import { getCurrentUser } from '@/lib/auth/session'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
-// Storage writes stay on the admin client for now -- the enrollment-photos
-// bucket has zero storage policies (RLS enabled, deny-all for anon/
-// authenticated), so a session-scoped client would fail the upload.
-// Flagged as a follow-up: add storage policies scoped to institution_id
-// in the object path, then switch this to the session client too.
+// Storage uploads now use the session client (not admin) because storage policies
+// allow authenticated users to upload to their institution's folder. The session
+// user's institution_id matches the folder path, so RLS allows the upload.
 async function uploadPhotoAndQueueJob(institutionId: string, studentId: string, photo: File) {
-  const admin = createAdminClient()
+  const supabase = await createClient()
   const ext = photo.name.split('.').pop() || 'jpg'
   const storagePath = `${institutionId}/${studentId}/${crypto.randomUUID()}.${ext}`
 
-  const { error: uploadError } = await admin.storage
+  const { error: uploadError } = await supabase.storage
     .from('enrollment-photos')
     .upload(storagePath, photo)
 
@@ -25,7 +22,7 @@ async function uploadPhotoAndQueueJob(institutionId: string, studentId: string, 
     throw new Error(`Failed to upload photo: ${uploadError.message}`)
   }
 
-  const { error: jobError } = await admin
+  const { error: jobError } = await supabase
     .from('enrollment_jobs')
     .insert({
       institution_id: institutionId,

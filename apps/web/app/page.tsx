@@ -29,15 +29,15 @@ export default async function DashboardPage() {
     { label: 'Active Students', value: studentCount ?? 0, href: '/students', attention: false },
     { label: 'Active Cameras', value: cameraCount ?? 0, href: '/cameras', attention: (cameraCount ?? 0) === 0 },
     { label: 'Total Sessions', value: sessionCount ?? 0, href: '/sessions', attention: false },
-    { label: 'Pending Disputes', value: pendingDisputeCount ?? 0, href: '/sessions', attention: (pendingDisputeCount ?? 0) > 0 },
-    { label: 'Needs Review', value: uncertainCount ?? 0, href: '/sessions', attention: (uncertainCount ?? 0) > 0 },
+    { label: 'Pending Disputes', value: pendingDisputeCount ?? 0, href: '/disputes', attention: (pendingDisputeCount ?? 0) > 0 },
+    { label: 'Needs Review', value: uncertainCount ?? 0, href: '/attendance', attention: (uncertainCount ?? 0) > 0 },
   ]
 
   const quickLinks = [
     { label: 'Add a student', desc: 'Enroll one student with a photo', href: '/students/new' },
     { label: 'Bulk import', desc: 'Enroll many students from a CSV', href: '/students/bulk-import' },
+    { label: 'Review attendance', desc: 'Assess marked sessions and finalizations', href: '/attendance' },
     { label: 'Sync check-ins', desc: 'Import external device data', href: '/checkins' },
-    { label: 'View sessions', desc: 'Browse class sessions and results', href: '/sessions' },
     { label: 'Attendance settings', desc: 'Recalibrate finalization thresholds', href: '/settings' },
   ]
 
