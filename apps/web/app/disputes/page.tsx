@@ -51,7 +51,7 @@ export default async function DisputesPage({
         ) : (
           <div className="space-y-6">
             {disputes.map((d: any) => (
-              <div key={d.id} className="p-5 border rounded-lg" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
+              <div key={d.id} className="card">
                 <div className="flex justify-between items-start mb-4">
                   <div>
                     <h3 className="font-semibold text-lg">{d.students?.full_name}</h3>
@@ -86,8 +86,8 @@ export default async function DisputesPage({
 
                     <div className="mb-4">
                       <h4 className="text-xs uppercase tracking-wide mb-1" style={{ color: 'var(--muted)' }}>Student reason</h4>
-                      <p className="text-sm bg-black/20 p-3 rounded" style={{ border: '1px solid var(--border)' }}>
-                        &quot;{d.reason || 'No reason provided.'}&quot;
+                      <p className="text-sm card-compact p-3" style={{ border: '1px solid var(--border)' }}>
+                        "{d.reason || 'No reason provided.'}"
                       </p>
                     </div>
 
@@ -111,21 +111,21 @@ export default async function DisputesPage({
                         />
                       </div>
                     ) : (
-                      <div className="mb-4 flex-1 flex items-center justify-center bg-black/20 rounded border text-sm" style={{ borderColor: 'var(--border)', color: 'var(--muted)', minHeight: '8rem' }}>
+                      <div className="mb-4 flex-1 flex items-center justify-center card-compact rounded border text-sm" style={{ borderColor: 'var(--border)', color: 'var(--muted)', minHeight: '8rem' }}>
                         No camera evidence available
                       </div>
                     )}
 
                     {d.status === 'pending' && user.role !== 'student' && (
-                      <form action={resolveDispute.bind(null, d.id, d.final_attendance?.session_id)} className="mt-auto bg-black/40 p-3 rounded border flex gap-3 items-center" style={{ borderColor: 'var(--border)' }}>
-                        <select name="resolved_status_for_attendance" className="field-input py-1 text-sm bg-black">
+                      <form action={resolveDispute.bind(null, d.id, d.final_attendance?.session_id)} className="mt-auto card-compact p-3 border flex gap-3 items-center" style={{ borderColor: 'var(--border)' }}>
+                        <select name="resolved_status_for_attendance" className="field-input py-1 text-sm !w-40">
                           <option value="">Keep current status</option>
                           <option value="present">Override to Present</option>
                           <option value="absent">Override to Absent</option>
                           <option value="left_early">Override to Left Early</option>
                         </select>
-                        <button type="submit" name="status" value="approved" className="btn-primary py-1 whitespace-nowrap">Approve</button>
-                        <button type="submit" name="status" value="rejected" className="btn-secondary py-1 whitespace-nowrap">Reject</button>
+                        <button type="submit" name="status" value="approved" className="btn-primary-sm whitespace-nowrap">Approve</button>
+                        <button type="submit" name="status" value="rejected" className="btn-secondary-sm whitespace-nowrap">Reject</button>
                       </form>
                     )}
                   </div>

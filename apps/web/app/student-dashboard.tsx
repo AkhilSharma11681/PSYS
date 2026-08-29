@@ -197,7 +197,7 @@ export default async function StudentDashboard({ user }: { user: any }) {
                                 className="field-input py-1 text-xs" 
                                 style={{ width: '12rem' }}
                               />
-                              <button type="submit" className="btn-primary py-1 px-3 text-xs">Submit</button>
+                              <button type="submit" className="btn-primary-sm">Submit</button>
                             </form>
                           </details>
                         )

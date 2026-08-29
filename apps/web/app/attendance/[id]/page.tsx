@@ -176,7 +176,7 @@ export default async function SessionAttendancePage({
                                 <option value="left_early">Left Early</option>
                               </select>
                               <input type="text" name="notes" placeholder="Notes (optional)" className="field-input py-1 text-sm !w-40" />
-                              <button type="submit" className="btn-secondary py-1 px-3">Save</button>
+                              <button type="submit" className="btn-secondary-sm">Save</button>
                             </div>
                           </form>
                         </div>
