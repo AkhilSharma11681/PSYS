@@ -29,8 +29,51 @@ with"** field first — that's the actual to-do list, not a summary to skim.
 
 ---
 
+## Test accounts (manual UI testing)
+
+Three Supabase Auth users exist on the linked remote project for manual testing.
+All three are linked to institution "Test University"
+(id `70881552-0663-494b-8b95-59cfdd5fb246`).
+
+| Role    | Email               | `public.users.id`                           |
+|---------|---------------------|---------------------------------------------|
+| admin   | admin@test.local    | 38745115-3314-4032-8488-db196a71f966|
+| teacher | teacher@test.local  | 85216994-0d8d-4345-b772-d0f3bb942fae|
+| student | student@test.local  | 68714a6a-86ce-405f-a2fb-e5565648e772|
+
+Passwords are kept out of this file intentionally — check the local `apps/web/.env.local`
+gitignored dev notes, or reset via the Supabase dashboard.
+
+Note: `student@test.local` has no `students` row yet, so the student dashboard at `/`
+will show "Your account is not linked to a student record" until a `students` row with
+`user_id = 68714a6a-86ce-405f-a2fb-e5565648e772` is created.
+
+---
+
 ## Session log
 (Newest entry at top. Use the Entry Format above for every new one.)
+
+### 2026-08-29 — Session 6
+**Goal for this session:**
+Create three test accounts (admin, teacher, student) for manual UI testing, all on institution 1.
+**Done:**
+- Created three Supabase Auth users via the Admin API: `admin@test.local`, `teacher@test.local`, `student@test.local` (all under institution "Test University", ID `70881552-0663-494b-8b95-59cfdd5fb246`).
+- Created the `Test University` institution row in `public.institutions`.
+- Inserted one row per auth user into `public.users` with matching `id`, `role`, `institution_id`, and `full_name`.
+- Logged in to apps/web to confirm the test user link works (admin dashboard, teacher attendance view, student dashboard at `/`).
+- Confirmed `StudentDashboard` is a component rendered inside `app/page.tsx` based on `user.role === 'student'`, not a separate `/student-dashboard` route.
+**Files changed:**
+- `docs/PROGRESS.md`
+**Left / not done:**
+- `student@test.local` has no `students` row yet — student dashboard will show the "Your account is not linked to a student record" message until a `students` row with `user_id = 68714a6a-86ce-405f-a2fb-e5565648e772` is created.
+- Comprehensive seed script (per Session 5 carry-over) still not created.
+- Operational tasks: backup/recovery, API rate limiting.
+**Next session should start with:**
+- Run a quick smoke test of each test account in the browser to confirm role-scoped navigation works as expected, then decide between the seed script (per Session 5) and operational tasks (backup/recovery, rate-limiting).
+**Open questions for teammate:**
+- None.
+**Blockers:**
+- None.
 
 ### 2026-08-29 — Session 5
 **Goal for this session:**
