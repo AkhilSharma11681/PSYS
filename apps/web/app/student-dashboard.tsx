@@ -90,7 +90,10 @@ export default async function StudentDashboard({ user }: { user: any }) {
               {attendanceRate}%
             </div>
             <div className="text-xs uppercase tracking-wide mt-2" style={{ color: 'var(--muted)' }}>
-              Attendance Rate
+              Present Rate
+            </div>
+            <div className="text-[10px] mt-1 leading-tight" style={{ color: 'var(--muted)' }}>
+              % of finalized sessions marked present
             </div>
           </div>
           <div className="px-4 py-5 border-b border-r" style={{ borderColor: 'var(--border)' }}>
@@ -100,6 +103,9 @@ export default async function StudentDashboard({ user }: { user: any }) {
             <div className="text-xs uppercase tracking-wide mt-2" style={{ color: 'var(--muted)' }}>
               Active Classes
             </div>
+            <div className="text-[10px] mt-1 leading-tight" style={{ color: 'var(--muted)' }}>
+              classes you are enrolled in
+            </div>
           </div>
           <div className="px-4 py-5 border-b border-r" style={{ borderColor: 'var(--border)' }}>
             <div className="text-4xl font-mono tabular-nums font-semibold" style={{ color: 'var(--foreground)' }}>
@@ -108,6 +114,9 @@ export default async function StudentDashboard({ user }: { user: any }) {
             <div className="text-xs uppercase tracking-wide mt-2" style={{ color: 'var(--muted)' }}>
               Recorded Sessions
             </div>
+            <div className="text-[10px] mt-1 leading-tight" style={{ color: 'var(--muted)' }}>
+              finalized sessions for your classes
+            </div>
           </div>
           <div className="px-4 py-5 border-b border-r" style={{ borderColor: 'var(--border)' }}>
             <div className="text-4xl font-mono tabular-nums font-semibold" style={{ color: activeDisputes > 0 ? 'var(--accent-warn)' : 'var(--foreground)' }}>
@@ -115,6 +124,9 @@ export default async function StudentDashboard({ user }: { user: any }) {
             </div>
             <div className="text-xs uppercase tracking-wide mt-2" style={{ color: 'var(--muted)' }}>
               Pending Disputes
+            </div>
+            <div className="text-[10px] mt-1 leading-tight" style={{ color: 'var(--muted)' }}>
+              open dispute filings
             </div>
           </div>
         </div>
@@ -136,7 +148,10 @@ export default async function StudentDashboard({ user }: { user: any }) {
             <div className="ledger-head" style={{ gridTemplateColumns: '2fr 1fr 1fr 1.5fr' }}>
               <div>Class & Date</div>
               <div>Status</div>
-              <div>Presence</div>
+              <div>
+                <div>Presence</div>
+                <div className="text-[10px] normal-case font-normal">% time detected</div>
+              </div>
               <div>Action</div>
             </div>
             {safeAttendance.map((a: any) => {
