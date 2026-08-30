@@ -48,8 +48,14 @@ class DlibFaceRecognitionProvider(FaceRecognitionProvider):
         height = bottom - top
         size_score = min(1.0, (width * height) / (150 * 150))
 
-        gray = cv2.cvtColor(crop, cv2.COLOR_RGB2GRAY)
-        laplacian_var = cv2.Laplacian(gray, cv2.CV_64F).var()
+        # Normalize scale dependency by resizing all crops to fixed 150x150
+        crop_150 = cv2.resize(crop, (150, 150))
+        gray = cv2.cvtColor(crop_150, cv2.COLOR_RGB2GRAY)
+
+        # Apply light 3x3 blur to equalize sensor noise vs compression artifacts
+        gray_blurred = cv2.GaussianBlur(gray, (3, 3), 0)
+
+        laplacian_var = cv2.Laplacian(gray_blurred, cv2.CV_64F).var()
         blur_score = min(1.0, laplacian_var / 100.0)
 
         mean_brightness = float(np.mean(gray))
