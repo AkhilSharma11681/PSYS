@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { addEnrollmentPhoto, updateStudent, confirmConsent } from '@/lib/enrollment/actions'
+import { addEnrollmentPhoto, updateStudent, confirmConsent, dismissFailedEnrollmentJob } from '@/lib/enrollment/actions'
 
 export default async function StudentDetailPage({
   params,
@@ -172,24 +172,33 @@ export default async function StudentDetailPage({
             <h2 className="text-sm font-semibold mb-3">Pending Jobs</h2>
             <div className="card">
               {pendingJobs.map((j) => (
-                <div key={j.id} className="py-3 border-b last:border-0" style={{ borderColor: 'var(--border)' }}>
-                  <p className="text-sm" style={{ color: 'var(--accent-warn)' }}>
-                    {j.status === 'failed' ? `Failed: ${j.error}` : `${j.status}…`}
-                  </p>
-                  {jobPhotoUrls[j.id] && (
-                    <a
-                      href={jobPhotoUrls[j.id]}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-block mt-2"
-                    >
-                      <img
-                        src={jobPhotoUrls[j.id]}
-                        alt="Uploaded photo"
-                        className="h-24 rounded border"
-                        style={{ borderColor: 'var(--border)' }}
-                      />
-                    </a>
+                <div key={j.id} className="py-3 border-b last:border-0 flex items-start justify-between gap-4" style={{ borderColor: 'var(--border)' }}>
+                  <div>
+                    <p className="text-sm" style={{ color: 'var(--accent-warn)' }}>
+                      {j.status === 'failed' ? `Failed: ${j.error}` : `${j.status}…`}
+                    </p>
+                    {jobPhotoUrls[j.id] && (
+                      <a
+                        href={jobPhotoUrls[j.id]}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-block mt-2"
+                      >
+                        <img
+                          src={jobPhotoUrls[j.id]}
+                          alt="Uploaded photo"
+                          className="h-24 rounded border"
+                          style={{ borderColor: 'var(--border)' }}
+                        />
+                      </a>
+                    )}
+                  </div>
+                  {j.status === 'failed' && (
+                    <form action={dismissFailedEnrollmentJob.bind(null, j.id, id)}>
+                      <button type="submit" className="btn-secondary-sm text-xs">
+                        Dismiss
+                      </button>
+                    </form>
                   )}
                 </div>
               ))}

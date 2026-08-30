@@ -171,3 +171,51 @@ export async function confirmConsent(studentId: string) {
 
   revalidatePath(`/students/${studentId}`)
 }
+
+export async function dismissFailedEnrollmentJob(jobId: string, studentId: string) {
+  const user = await getCurrentUser()
+  if (!user || (user.role !== 'admin' && user.role !== 'teacher')) {
+    throw new Error('Unauthorized: only admins and teachers can dismiss failed jobs')
+  }
+
+  const supabase = await createClient()
+
+  // First fetch the job to get its storage path and verify state
+  const { data: job, error: fetchError } = await supabase
+    .from('enrollment_jobs')
+    .select('storage_path, status')
+    .eq('id', jobId)
+    .single()
+
+  if (fetchError || !job) {
+    throw new Error('Failed to fetch job details')
+  }
+
+  if (job.status !== 'failed') {
+    throw new Error('Only failed jobs can be dismissed')
+  }
+
+  // Delete the source file from Storage to prevent orphans
+  if (job.storage_path) {
+    const { error: storageError } = await supabase.storage
+      .from('enrollment-photos')
+      .remove([job.storage_path])
+
+    if (storageError) {
+      console.error(`Failed to delete storage file for job ${jobId}: ${storageError.message}`)
+      // Proceeding with job row deletion anyway so the UI doesn't get permanently stuck
+    }
+  }
+
+  // Delete the job record from database
+  const { error: deleteError } = await supabase
+    .from('enrollment_jobs')
+    .delete()
+    .eq('id', jobId)
+
+  if (deleteError) {
+    throw new Error(`Failed to delete job record: ${deleteError.message}`)
+  }
+
+  revalidatePath(`/students/${studentId}`)
+}
