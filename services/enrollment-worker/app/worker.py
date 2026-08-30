@@ -40,14 +40,26 @@ def process_job(job):
 
         result = response.json()
 
+        # ASSUMPTION: Single worker process only. No atomic job claiming exists, so concurrent workers would race here.
         existing = (
             supabase.table("student_biometrics")
-            .select("id")
+            .select("id, quality_score")
             .eq("student_id", student_id)
             .eq("is_primary", True)
             .execute()
         )
-        is_primary = len(existing.data) == 0
+        
+        new_quality = result["quality_score"]
+        is_primary = False
+        old_primary_id = None
+        
+        if len(existing.data) == 0:
+            is_primary = True
+        else:
+            current_primary = existing.data[0]
+            if new_quality > (current_primary.get("quality_score") or 0.0):
+                is_primary = True
+                old_primary_id = current_primary["id"]
 
         supabase.table("student_biometrics").insert(
             {
@@ -57,9 +69,14 @@ def process_job(job):
                 "embedding_model": result["embedding_model"],
                 "embedding_version": 1,
                 "is_primary": is_primary,
-                "quality_score": result["quality_score"],
+                "quality_score": new_quality,
             }
         ).execute()
+        
+        if old_primary_id:
+            supabase.table("student_biometrics").update(
+                {"is_primary": False}
+            ).eq("id", old_primary_id).execute()
 
         student = (
             supabase.table("students")
