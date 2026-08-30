@@ -55,8 +55,8 @@ export default async function ClassesPage() {
                 </select>
               </div>
               <div>
-                <label className="field-label">Recurrence (e.g. MON,WED 09:00-10:00)</label>
-                <input name="recurrence" placeholder="Optional" className="field-input" />
+                <label className="field-label">Recurrence (optional)</label>
+                <input name="recurrence" placeholder="e.g. MON,WED 09:00-10:00" className="field-input" />
               </div>
             </div>
             <button type="submit" className="btn-primary mt-4">Create Class</button>

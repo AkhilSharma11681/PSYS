@@ -5,7 +5,7 @@ import { scheduleClassSession } from '@/lib/enrollment/classes'
 export default function ScheduleSessionForm({ classId }: { classId: string }) {
   return (
     <form action={scheduleClassSession.bind(null, classId)}>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="flex flex-col gap-3">
         <div>
           <label className="field-label">Scheduled Start</label>
           <input
@@ -40,8 +40,8 @@ export default function ScheduleSessionForm({ classId }: { classId: string }) {
             }}
           />
         </div>
-        <div className="md:self-end">
-          <button type="submit" className="btn-primary w-full">Schedule Session</button>
+        <div className="mt-1">
+          <button type="submit" className="btn-primary">Schedule Session</button>
         </div>
       </div>
     </form>
