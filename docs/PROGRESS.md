@@ -29,6 +29,31 @@ with"** field first — that's the actual to-do list, not a summary to skim.
 
 ---
 
+### 2026-08-30 — Session (orphaned user fix + audit cleanup)
+**Goal for this session:** Check for orphaned auth users, fix getCurrentUser() UX crash when profile is missing by handling in middleware instead.
+**Done:**
+- Queried auth.users joined against public.users — all 5 accounts are linked (3 test + akhil@test.com + ansh@test.com), no orphans found.
+- Added orphaned-user check in middleware.ts: after auth.getUser(), queries public.users, signs out and redirects to /login?reason=orphaned if no profile row exists.
+- Verified middleware matcher excludes static assets (_next/static, _next/image, favicon, image extensions).
+- Provided reproduction steps for testing: create auth user via Admin API, log in, access protected route — should redirect cleanly.
+**Files changed:**
+- apps/web/lib/supabase/middleware.ts (added orphaned-user check, ~15 new lines)
+- docs/DECISIONS.md (recorded orphaned user handling decision)
+- docs/PROGRESS.md (this entry + test accounts table)
+**Left / not done:**
+- Restyle propagation incomplete (classes/page, attendance/page, students/page, sessions/*, checkins/page still need .card/.btn/.field-input).
+- Test DB artifacts from Session 9 (session d444c450 fake observations) still present.
+- Comprehensive seed script still not built.
+- Operational tasks (backup/recovery, rate limiting) still untouched.
+**Next session should start with:**
+- Run the full-page audit again (or reference the one already done) and finish propagating .card/.btn/.field-input consistently to every remaining page, verifying each in the browser before moving to the next.
+**Open questions for teammate:**
+- None.
+**Blockers:**
+- None.
+
+---
+
 ### 2026-08-30 — Session (light-theme restyle + 4 real bug fixes)
 **Goal for this session:** Restyle PSYS to a light-theme SaaS dashboard (Newton School-inspired), fix all bugs found during the process, audit every page, propagate restyles systematically.
 **Done:**
@@ -102,15 +127,17 @@ with"** field first — that's the actual to-do list, not a summary to skim.
 
 ## Test accounts (manual UI testing)
 
-Three Supabase Auth users exist on the linked remote project for manual testing.
-All three are linked to institution "Test University"
-(id `70881552-0663-494b-8b95-59cfdd5fb246`).
+Five Supabase Auth users exist on the linked remote project for manual testing.
+The role-scoped test trio are linked to institution "Test University"
+(id `70881552-0663-494b-8b95-59cfdd5fb246`); the two named admin accounts are linked to institution `485a5846-54c5-48bf-a523-6f86ecb54c42`.
 
 | Role    | Email               | `public.users.id`                           |
 |---------|---------------------|---------------------------------------------|
 | admin   | admin@test.local    | 38745115-3314-4032-8488-db196a71f966|
 | teacher | teacher@test.local  | 85216994-0d8d-4345-b772-d0f3bb942fae|
 | student | student@test.local  | 68714a6a-86ce-405f-a2fb-e5565648e772|
+| admin   | akhil@test.com      | 6c37cb61-ca55-45c5-b6a9-160abcf5f592|
+| admin   | ansh@test.com       | 52111cdb-6e33-4b7a-927b-1c03ba8e98f0|
 
 Passwords are kept out of this file intentionally — check the local `apps/web/.env.local`
 gitignored dev notes, or reset via the Supabase dashboard.

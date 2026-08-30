@@ -36,5 +36,27 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
+  // Check for orphaned auth users (auth session exists but no public.users row)
+  if (user) {
+    const { data: profile } = await supabase
+      .from('users')
+      .select('id')
+      .eq('id', user.id)
+      .single()
+
+    if (!profile) {
+      // Clear stale session and redirect to login
+      const url = request.nextUrl.clone()
+      url.pathname = '/login'
+      url.searchParams.set('reason', 'orphaned')
+      await supabase.auth.signOut()
+      const response = NextResponse.redirect(url)
+      supabaseResponse.cookies.getAll().forEach(({ name, value, ...options }) =>
+        response.cookies.set(name, value, options)
+      )
+      return response
+    }
+  }
+
   return supabaseResponse
 }
