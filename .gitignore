@@ -4,3 +4,10 @@ __pycache__/
 .env
 .DS_Store
 node_modules/
+
+# Local Claude Code context
+/CLAUDE.md
+/docs/ARCHITECTURE.md
+/docs/DECISIONS.md
+/docs/PROGRESS.md
+/docs/OPERATIONS.md
