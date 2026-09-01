@@ -29,6 +29,31 @@ with"** field first — that's the actual to-do list, not a summary to skim.
 
 ---
 
+### 2026-09-02 — Session (Step 5: Merge fix branches to main)
+**Goal for this session:** Review and merge isolated fix branches into main, push to origin, and prepare to apply migration 0033 to remote DB.
+**Done:**
+- Step 5 complete: Merged both clean fix branches (`fix/quality-score-normalization-camera-only` and `fix/roster-ambiguous-column-migration-only`) into `main` and pushed to `origin/main` (commit `8bc7296`).
+- Confirmed no database schema changes have been applied yet — migration `0033_fix_derive_session_roster_ambiguous_column.sql` exists as a local file on `main`, but has not been run against the remote database.
+- Verified that Supabase CLI is currently not linked to the project locally (`LegacyProjectNotLinkedError`).
+**Files changed:**
+- services/camera-service/app/recognition/provider.py
+- supabase/migrations/0033_fix_derive_session_roster_ambiguous_column.sql
+- docs/PROGRESS.md
+**Left / not done:**
+- Step 6: Apply migration 0033 to remote DB via `supabase db push`. Deferred to fresh session for stability due to token limit loops hitting mid-session.
+- Re-run 3-person hardware test (`test_present_absent.py`).
+**Next session should start with:**
+- Run `supabase link --project-ref <ref>` (find/confirm project ref from `.env` `SUPABASE_URL` or Supabase dashboard).
+- Verify migration state with `supabase migration list`.
+- Apply migration `0033` via `supabase db push`.
+- Re-run the 3-person hardware test (`test_present_absent.py`).
+**Open questions for teammate:**
+- None.
+**Blockers:**
+- None.
+
+---
+
 ### 2026-09-02 — Session (Steps 3 & 4: Full DB cleanup of synthetic test artifacts)
 **Goal for this session:** Check for remaining FK dependencies, then execute Step 3 (session d444c450 artifacts) and Step 4 (3 blank-name test students) database cleanups.
 **Done:**
