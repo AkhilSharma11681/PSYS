@@ -29,26 +29,30 @@ with"** field first — that's the actual to-do list, not a summary to skim.
 
 ---
 
-### 2026-09-02 — Session (Step 3: d444c450 session cleanup and dependency check)
-**Goal for this session:** Check for remaining FK dependencies on disputes, then completely remove synthetic session artifacts for d444c450-af7b-4bef-b9b7-8f6343ffab74.
+### 2026-09-02 — Session (Steps 3 & 4: Full DB cleanup of synthetic test artifacts)
+**Goal for this session:** Check for remaining FK dependencies, then execute Step 3 (session d444c450 artifacts) and Step 4 (3 blank-name test students) database cleanups.
 **Done:**
-- Checked for any table with an FK constraint pointing to `disputes.id`. Verified that no strict foreign keys exist (e.g. `audit_logs` uses soft UUID links via `entity_id` and polymorphic `entity_type`).
 - Executed Step 3 deletions sequentially in the foreground to clear out test session `d444c450-af7b-4bef-b9b7-8f6343ffab74`:
   1. Deleted 1 row from `disputes` (`id: 7a9d6131-a4a9-4234-8cb3-69910cfb2a29`) to satisfy `final_attendance_id` FK.
   2. Deleted 1 row from `final_attendance` (`id: 44f7d429-2b94-4c53-8c42-e324fb79d382`).
   3. Deleted 3 rows from `session_exceptions`.
-- Re-ran verification SELECT confirming 0 rows remain across all three tables for the test IDs.
-- Recorded one orphaned `audit_logs` record (`id: 45d402dc-cbf4-4c71-a26c-043eaa5e5835`) referring to the deleted dispute as a softly linked `entity_id`, but it did not block deletion.
+- Recorded one orphaned `audit_logs` record (`id: 45d402dc-cbf4-4c71-a26c-043eaa5e5835`) softly referencing the deleted dispute via polymorphic `entity_id` — confirmed as a known harmless orphan with no foreign key constraint.
+- Pre-checked all potential FK tables (`attendance_observations`, `session_exceptions`, `final_attendance`, `disputes`, `enrollment_jobs`, `external_checkin_events`) for references to the 3 blank-name test student IDs — all returned 0 referencing rows.
+- Executed Step 4 deletions sequentially in the foreground for the 3 blank-name test students (`2ca4008c-275e-4396-bdfa-d130d509ebc6`, `19f93ca3-4a3d-49ad-a947-08d7aff3211e`, `6b629785-bd9b-4b01-a50b-62450d218bee`):
+  1. Deleted 3 rows from `student_biometrics`.
+  2. Deleted 3 rows from `class_enrollments`.
+  3. Deleted 3 rows from `students`.
+- Re-ran verification SELECTs confirming 0 rows remain across all clean-up target tables.
 **Files changed:**
 - docs/PROGRESS.md
 **Left / not done:**
-- Step 4 DB cleanup: delete `student_biometrics`, `class_enrollments`, then `students` for the 3 blank-name test students.
 - Merge both isolated fix branches (`fix/quality-score-normalization-camera-only` and `fix/roster-ambiguous-column-migration-only`) into main.
 - Apply migration 0033 via `supabase db push`.
 - Re-run 3-person hardware test (`test_present_absent.py`).
 **Next session should start with:**
-- Proceed to Step 4 of the DB cleanup to delete the 3 blank-name test students.
-- Wait for user approval before issuing any DELETE queries.
+- Merge both clean fix branches (`fix/quality-score-normalization-camera-only` and `fix/roster-ambiguous-column-migration-only`) into `main`.
+- Apply migration `0033` via `supabase db push`.
+- Re-run the 3-person hardware test (`test_present_absent.py`).
 **Open questions for teammate:**
 - None.
 **Blockers:**
