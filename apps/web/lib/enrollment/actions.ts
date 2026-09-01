@@ -1,23 +1,20 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/admin'
 import { getCurrentUser } from '@/lib/auth/session'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
-// Storage writes stay on the admin client for now -- the enrollment-photos
-// bucket has zero storage policies (RLS enabled, deny-all for anon/
-// authenticated), so a session-scoped client would fail the upload.
-// Flagged as a follow-up: add storage policies scoped to institution_id
-// in the object path, then switch this to the session client too.
+// Storage uploads now use the session client (not admin) because storage policies
+// allow authenticated users to upload to their institution's folder. The session
+// user's institution_id matches the folder path, so RLS allows the upload.
 async function uploadPhotoAndQueueJob(institutionId: string, studentId: string, photo: File) {
-  const admin = createAdminClient()
+  const supabase = await createClient()
   const ext = photo.name.split('.').pop() || 'jpg'
   const storagePath = `${institutionId}/${studentId}/${crypto.randomUUID()}.${ext}`
 
-  const { error: uploadError } = await admin.storage
+  const { error: uploadError } = await supabase.storage
     .from('enrollment-photos')
     .upload(storagePath, photo)
 
@@ -25,7 +22,7 @@ async function uploadPhotoAndQueueJob(institutionId: string, studentId: string, 
     throw new Error(`Failed to upload photo: ${uploadError.message}`)
   }
 
-  const { error: jobError } = await admin
+  const { error: jobError } = await supabase
     .from('enrollment_jobs')
     .insert({
       institution_id: institutionId,
@@ -170,6 +167,54 @@ export async function confirmConsent(studentId: string) {
 
   if (error) {
     throw new Error(`Failed to confirm consent: ${error.message}`)
+  }
+
+  revalidatePath(`/students/${studentId}`)
+}
+
+export async function dismissFailedEnrollmentJob(jobId: string, studentId: string) {
+  const user = await getCurrentUser()
+  if (!user || (user.role !== 'admin' && user.role !== 'teacher')) {
+    throw new Error('Unauthorized: only admins and teachers can dismiss failed jobs')
+  }
+
+  const supabase = await createClient()
+
+  // First fetch the job to get its storage path and verify state
+  const { data: job, error: fetchError } = await supabase
+    .from('enrollment_jobs')
+    .select('storage_path, status')
+    .eq('id', jobId)
+    .single()
+
+  if (fetchError || !job) {
+    throw new Error('Failed to fetch job details')
+  }
+
+  if (job.status !== 'failed') {
+    throw new Error('Only failed jobs can be dismissed')
+  }
+
+  // Delete the source file from Storage to prevent orphans
+  if (job.storage_path) {
+    const { error: storageError } = await supabase.storage
+      .from('enrollment-photos')
+      .remove([job.storage_path])
+
+    if (storageError) {
+      console.error(`Failed to delete storage file for job ${jobId}: ${storageError.message}`)
+      // Proceeding with job row deletion anyway so the UI doesn't get permanently stuck
+    }
+  }
+
+  // Delete the job record from database
+  const { error: deleteError } = await supabase
+    .from('enrollment_jobs')
+    .delete()
+    .eq('id', jobId)
+
+  if (deleteError) {
+    throw new Error(`Failed to delete job record: ${deleteError.message}`)
   }
 
   revalidatePath(`/students/${studentId}`)

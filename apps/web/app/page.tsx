@@ -1,11 +1,18 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentUser } from '@/lib/auth/session'
+import StudentDashboard from './student-dashboard'
 
 export default async function DashboardPage() {
   const user = await getCurrentUser()
   const supabase = await createClient()
 
+  // If the user is a student, render their specific dashboard
+  if (user.role === 'student') {
+    return <StudentDashboard user={user} />
+  }
+
+  // Teacher & Admin Dashboard
   const [
     { count: studentCount },
     { count: sessionCount },
@@ -29,15 +36,16 @@ export default async function DashboardPage() {
     { label: 'Active Students', value: studentCount ?? 0, href: '/students', attention: false },
     { label: 'Active Cameras', value: cameraCount ?? 0, href: '/cameras', attention: (cameraCount ?? 0) === 0 },
     { label: 'Total Sessions', value: sessionCount ?? 0, href: '/sessions', attention: false },
-    { label: 'Pending Disputes', value: pendingDisputeCount ?? 0, href: '/sessions', attention: (pendingDisputeCount ?? 0) > 0 },
-    { label: 'Needs Review', value: uncertainCount ?? 0, href: '/sessions', attention: (uncertainCount ?? 0) > 0 },
+    { label: 'Pending Disputes', value: pendingDisputeCount ?? 0, href: '/disputes', attention: (pendingDisputeCount ?? 0) > 0 },
+    { label: 'Needs Review', value: uncertainCount ?? 0, href: '/attendance', attention: (uncertainCount ?? 0) > 0 },
   ]
 
   const quickLinks = [
     { label: 'Add a student', desc: 'Enroll one student with a photo', href: '/students/new' },
+    { label: 'Manage classes', desc: 'Create a class, enroll students, schedule sessions', href: '/classes' },
     { label: 'Bulk import', desc: 'Enroll many students from a CSV', href: '/students/bulk-import' },
+    { label: 'Review attendance', desc: 'Assess marked sessions and finalizations', href: '/attendance' },
     { label: 'Sync check-ins', desc: 'Import external device data', href: '/checkins' },
-    { label: 'View sessions', desc: 'Browse class sessions and results', href: '/sessions' },
     { label: 'Attendance settings', desc: 'Recalibrate finalization thresholds', href: '/settings' },
   ]
 
@@ -47,22 +55,19 @@ export default async function DashboardPage() {
         <p className="page-eyebrow">Roll Register</p>
         <h1 className="page-title">Dashboard</h1>
         <p className="page-subtitle">
-          {user.full_name} · <span className="capitalize">{user.role}</span>
+          {user.full_name} &middot; <span className="capitalize">{user.role}</span>
         </p>
 
-        <div
-          className="grid grid-cols-2 sm:grid-cols-5 mb-12 border-t"
-          style={{ borderColor: 'var(--border)' }}
-        >
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-12">
           {stats.map((s) => (
             <Link
               key={s.label}
               href={s.href}
-              className="px-4 py-5 border-b border-r first:border-l transition-colors hover:bg-white/[0.03]"
+              className="card card-compact text-center transition-colors"
               style={{ borderColor: 'var(--border)' }}
             >
               <div
-                className="text-4xl font-mono tabular-nums font-semibold"
+                className="font-sans text-3xl font-semibold tabular-nums"
                 style={{ color: s.attention ? 'var(--accent-warn)' : 'var(--accent-good)' }}
               >
                 {String(s.value).padStart(2, '0')}
