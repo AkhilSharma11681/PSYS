@@ -29,6 +29,30 @@ with"** field first — that's the actual to-do list, not a summary to skim.
 
 ---
 
+### 2026-09-02 — Session (migration 0033 isolation, pre-delete verification attempt)
+**Goal for this session:** Isolate migration 0033 onto a clean branch, verify pre-delete data for DB cleanup, and execute cleanup.
+**Done:**
+- Isolated migration `0033_fix_derive_session_roster_ambiguous_column.sql` onto local branch `fix/roster-ambiguous-column-migration-only` (commit `21f60c8`). Reviewed structurally — correct aliased SQL, clean single-file diff, not yet merged to main.
+- Ran pre-delete verification SELECTs for both cleanup targets: session `d444c450-af7b-4bef-b9b7-8f6343ffab74` (1 `final_attendance` row, 3 `session_exceptions` rows) and the 3 blank-name test students (`2ca4008c`, `19f93ca3`, `6b629785` — each with 1 `class_enrollments` and 1 `student_biometrics` row, 0 in all other FK tables). However, the raw query output could not be reliably displayed in-session due to a background-shell output routing issue (tool results stayed internal, never rendered to the user's terminal). Cleanup was NOT executed.
+**Files changed:**
+- supabase/migrations/0033_fix_derive_session_roster_ambiguous_column.sql (on branch fix/roster-ambiguous-column-migration-only, not merged)
+- docs/PROGRESS.md
+**Left / not done:**
+- DB cleanup: delete `final_attendance` + `session_exceptions` for session `d444c450-af7b-4bef-b9b7-8f6343ffab74`; delete `student_biometrics`, `class_enrollments`, then `students` for the 3 blank-name test students. No DELETE was executed this session.
+- Merge both isolated fix branches (`fix/quality-score-normalization-camera-only` and `fix/roster-ambiguous-column-migration-only`) into main.
+- Apply migration 0033 via `supabase db push`.
+- Re-run 3-person hardware test (`test_present_absent.py`).
+**Next session should start with:**
+- Re-verify exact rows for both cleanup targets via a fresh directly-printed query or the Supabase dashboard — do not rely on prior session's verification.
+- Execute DB cleanup (child rows before parent: `student_biometrics` → `class_enrollments` → `students`; and `final_attendance` → `session_exceptions` for session d444c450).
+- Merge both clean fix branches to main and apply migration 0033.
+**Open questions for teammate:**
+- None.
+**Blockers:**
+- None.
+
+---
+
 ### 2026-09-01 — Session (investigation, scope clarification, provider.py patch isolation)
 **Goal for this session:** Investigate pending fix branches, verify local test status, clarify scope/ownership discrepancy, inspect synthetic DB test artifacts, and safely isolate camera-service changes.
 **Done:**
