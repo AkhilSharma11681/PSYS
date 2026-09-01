@@ -29,6 +29,36 @@ with"** field first — that's the actual to-do list, not a summary to skim.
 
 ---
 
+### 2026-09-01 — Session (investigation, scope clarification, provider.py patch isolation)
+**Goal for this session:** Investigate pending fix branches, verify local test status, clarify scope/ownership discrepancy, inspect synthetic DB test artifacts, and safely isolate camera-service changes.
+**Done:**
+- Resolved scope/ownership discrepancy in CLAUDE.md: verified Akhil owns `services/camera-service` (camera capture, RTSP, recognition, finalization, disputes backend); CLAUDE.md scope description was written from teammate's perspective and is inverted for this session.
+- Audited pending remote branches (`fix/quality-score-normalization` and `fix/roster-ambiguous-column`): confirmed both contain unrelated web-side reverts bundled with the fixes. Only `provider.py` and migration `0033` are relevant to camera-service.
+- Isolated and committed `provider.py` quality score normalization fix (150x150 crop resize + 3x3 Gaussian blur) onto local branch `fix/quality-score-normalization-camera-only` (commit `4f0096a`). Reviewed and approved by Akhil; not yet merged to main.
+- Investigated `test_present_absent.py` status: session `66666666-6666-6666-6666-666666666666` has 0 observations; 3-person hardware test never completed and needs to be re-run.
+- Investigated `enroll_person.py` status: written directly into live Supabase DB (same `SUPABASE_URL` as web app). Created 3 blank-name student rows (`2ca4008c-275e-4396-bdfa-d130d509ebc6`, `19f93ca3-4a3d-49ad-a947-08d7aff3211e`, `6b629785-bd9b-4b01-a50b-62450d218bee`) with 1 `class_enrollments` and 1 `student_biometrics` row each, 0 observations/exceptions/final_attendance/disputes. Pending cleanup.
+- Investigated `d444c450` synthetic test artifacts: true UUID is `d444c450-af7b-4bef-b9b7-8f6343ffab74`. `attendance_observations` are already gone (0 rows), but `final_attendance` (1 row: Aisha left_early) and `session_exceptions` (3 rows) remain. Pending cleanup.
+- Verified migration `0033_fix_derive_session_roster_ambiguous_column.sql` SQL text and confirmed local migrations stop at 0032; 0033 will sequence cleanly without version collision.
+**Files changed:**
+- services/camera-service/app/recognition/provider.py (on branch fix/quality-score-normalization-camera-only)
+- docs/PROGRESS.md
+**Left / not done:**
+- Isolate migration 0033 onto `fix/roster-ambiguous-column-migration-only` branch.
+- Database cleanup: delete final_attendance + session_exceptions for session `d444c450-af7b-4bef-b9b7-8f6343ffab74`; delete 3 blank-name test students (`2ca4008c`, `19f93ca3`, `6b629785`).
+- Merge isolated branches (`fix/quality-score-normalization-camera-only` and `fix/roster-ambiguous-column-migration-only`) into main.
+- Apply migration 0033 via `supabase db push`.
+- Re-run 3-person hardware test (`test_present_absent.py`).
+**Next session should start with:**
+- Step 2: Create local branch `fix/roster-ambiguous-column-migration-only` and extract migration 0033 file.
+- Perform DB cleanup for session `d444c450-af7b-4bef-b9b7-8f6343ffab74` and the 3 blank student IDs.
+- Merge both clean branches to main and apply migration 0033.
+**Open questions for teammate:**
+- None — migration 0033 is a non-breaking bugfix for `derive_session_roster()`, safe to apply.
+**Blockers:**
+- None.
+
+---
+
 ### 2026-08-30 — Session (live enrollment/webcam testing, quality score normalization, roster regression fix)
 **Goal for this session:** Test real enrollment pipeline, verify live webcam face recognition, fix enrollment-worker is_primary calculation and failed job handling, and diagnose matching behavior.
 **Done:**
