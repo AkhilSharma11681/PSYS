@@ -29,6 +29,25 @@ with"** field first — that's the actual to-do list, not a summary to skim.
 
 ---
 
+### 2026-09-02 — Session (Step 6: Supabase Link & Migration 0033 Verification)
+**Goal for this session:** Link Supabase CLI, verify migration 0033 state, and prepare for 3-person hardware test.
+**Done:**
+- Linked Supabase CLI to remote project `enugorwmjtzxcmnsxizm`.
+- Verified migration state using `supabase migration list` (all migrations 0001–0033 local and remote).
+- Migration 0033 confirmed live on remote (verified via direct query of derive_session_roster() function body — aliases present). Exact timing/mechanism of when it was applied is unconfirmed — possibly applied directly during troubleshooting in this session rather than via a tracked db push. No further action needed since the live state is verified correct.
+**Files changed:**
+- docs/PROGRESS.md
+**Left / not done:**
+- Re-run 3-person hardware test (`test_present_absent.py`).
+**Next session should start with:**
+- Re-run the 3-person hardware test (`test_present_absent.py`).
+**Open questions for teammate:**
+- None.
+**Blockers:**
+- None.
+
+---
+
 ### 2026-09-02 — Session (Step 5: Merge fix branches to main)
 **Goal for this session:** Review and merge isolated fix branches into main, push to origin, and prepare to apply migration 0033 to remote DB.
 **Done:**
