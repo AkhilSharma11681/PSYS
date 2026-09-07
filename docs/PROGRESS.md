@@ -144,12 +144,16 @@ with"** field first — that's the actual to-do list, not a summary to skim.
 - Investigated and fixed quality_score scale-dependency bug in camera-service (blur normalization) — on fix/quality-score-normalization, pushed to origin, awaiting Akhil's review
 - End-to-end tested real face enrollment + live webcam recognition successfully (matched correctly across multiple runs)
 - Investigated a one-off false-positive match between two enrolled students; not reproducible across 5 follow-up runs, offline embedding distance confirms clean separation — flagged to Akhil, no threshold changes made
+- Investigated "Test Student Three" duplicates: found they bypassed deduplication during bulk import because roll_number was null.
+- Fixed bulk import deduplication bug (`apps/web/lib/enrollment/bulkImport.ts`): students without roll numbers are now checked and deduped by `(institution_id, full_name)` case-insensitively with explicit trimming on all lookups and set additions. Replaced form state-based guard with a synchronous `useRef` lock in `StudentBulkImportForm.tsx` to reliably prevent rapid double-submissions within the same event tick. Verified with isolated Node unit tests.
 **Files changed:**
 - services/enrollment-worker/app/worker.py
 - supabase/migrations/0032_enrollment_jobs_delete_policy.sql
 - supabase/migrations/0033_fix_derive_session_roster_ambiguous_column.sql
 - services/camera-service/app/recognition/provider.py
 - apps/web/lib/enrollment/actions.ts
+- apps/web/lib/enrollment/bulkImport.ts
+- apps/web/lib/enrollment/StudentBulkImportForm.tsx
 - apps/web/app/students/[id]/page.tsx
 - apps/web/app/globals.css
 - apps/web/app/layout.tsx
@@ -157,12 +161,11 @@ with"** field first — that's the actual to-do list, not a summary to skim.
 - services/camera-service/test_webcam_pipeline.py
 **Left / not done:**
 - Awaiting Akhil's review on both camera-service branches
-- The duplicate "Test Student Three" row noticed earlier in Students list — never investigated
 - Restyle propagation still incomplete on remaining pages
 - Test DB cleanup (session d444c450) still pending
 - Operational tasks (backups, rate limiting) still deferred
 **Next session should start with:**
-- Whatever Akhil says about the two pushed branches, plus the duplicate Test Student Three row.
+- Whatever Akhil says about the two pushed branches.
 **Open questions for teammate:**
 - Confirm review/merge of `fix/quality-score-normalization` (scale-dependent Laplacian fix in provider.py) and `fix/roster-ambiguous-column` (migration 0033 restoring aliased SQL in derive_session_roster()).
 **Blockers:**

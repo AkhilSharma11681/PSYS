@@ -5,10 +5,5 @@ __pycache__/
 .DS_Store
 node_modules/
 supabase/.temp/
-
-# Local Claude Code context
-/CLAUDE.md
-/docs/ARCHITECTURE.md
-/docs/DECISIONS.md
-/docs/PROGRESS.md
-/docs/OPERATIONS.md
+test_db.py
+services/camera-service/tmp/
