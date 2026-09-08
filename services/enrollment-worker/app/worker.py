@@ -1,3 +1,5 @@
+import ast
+import math
 import os
 import time
 from datetime import datetime, timezone
@@ -15,6 +17,74 @@ POLL_INTERVAL_SECONDS = 5
 MAX_RETRIES = 3
 
 supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+
+_config_cache = {}
+
+
+def _parse_embedding(raw):
+    """Supabase returns pgvector columns either as native lists or as strings
+    like '[0.1,0.2,...]'. Normalize both cases."""
+    if isinstance(raw, str):
+        return ast.literal_eval(raw)
+    return raw
+
+
+def get_match_threshold(institution_id: str) -> float:
+    """Fetch match_threshold from institution-specific attendance_config if active,
+    otherwise fallback to platform default (institution_id is null). Cached per-process."""
+    if institution_id in _config_cache:
+        return _config_cache[institution_id]
+
+    result = (
+        supabase.table("attendance_config")
+        .select("match_threshold")
+        .eq("institution_id", institution_id)
+        .eq("is_active", True)
+        .execute()
+    )
+
+    if not result.data:
+        result = (
+            supabase.table("attendance_config")
+            .select("match_threshold")
+            .is_("institution_id", "null")
+            .eq("is_active", True)
+            .execute()
+        )
+
+    if not result.data:
+        raise RuntimeError("no attendance_config found — not even a platform default")
+
+    threshold = float(result.data[0]["match_threshold"])
+    _config_cache[institution_id] = threshold
+    return threshold
+
+
+def is_duplicate_face(
+    new_embedding: list[float],
+    other_biometrics: list[dict],
+    threshold: float,
+) -> tuple[bool, str | None, float | None]:
+    """Check if new_embedding is within threshold Euclidean distance of any
+    embedding in other_biometrics.
+
+    other_biometrics is a list of dicts with 'student_id' and 'face_embedding'.
+    Returns (is_duplicate, collided_student_id, distance).
+    """
+    for row in other_biometrics:
+        existing_embedding = _parse_embedding(row.get("face_embedding"))
+        if existing_embedding is None:
+            continue
+        if len(new_embedding) != len(existing_embedding):
+            print(
+                f"[duplicate check warning] skipped student {row.get('student_id')}: "
+                f"embedding dimension mismatch ({len(new_embedding)} vs {len(existing_embedding)})"
+            )
+            continue
+        dist = math.dist(new_embedding, existing_embedding)
+        if dist <= threshold:
+            return True, row.get("student_id"), dist
+    return False, None, None
 
 
 def process_job(job):
@@ -39,6 +109,41 @@ def process_job(job):
             raise ValueError(f"embed failed ({response.status_code}): {response.text}")
 
         result = response.json()
+        new_embedding = result["embedding"]
+        new_quality = result["quality_score"]
+
+        # Cross-student duplicate check: compare new embedding against primary embeddings of other students in the same institution
+        match_threshold = get_match_threshold(institution_id)
+        other_biometrics = (
+            supabase.table("student_biometrics")
+            .select("student_id, face_embedding")
+            .eq("institution_id", institution_id)
+            .neq("student_id", student_id)
+            .eq("is_primary", True)
+            .execute()
+        )
+
+        is_dup, collided_student_id, dist = is_duplicate_face(
+            new_embedding,
+            other_biometrics.data or [],
+            match_threshold,
+        )
+        if is_dup:
+            error_msg = (
+                "Photo appears to match an existing student's face "
+                "(possible duplicate enrollment). Manual review required."
+            )
+            supabase.table("enrollment_jobs").update(
+                {
+                    "status": "failed",
+                    "error": error_msg,
+                }
+            ).eq("id", job_id).execute()
+            print(
+                f"[duplicate face detected] job {job_id} -> student {student_id} "
+                f"collided with student {collided_student_id} (distance {dist:.4f} <= {match_threshold})"
+            )
+            return
 
         # ASSUMPTION: Single worker process only. No atomic job claiming exists, so concurrent workers would race here.
         existing = (
@@ -48,11 +153,10 @@ def process_job(job):
             .eq("is_primary", True)
             .execute()
         )
-        
-        new_quality = result["quality_score"]
+
         is_primary = False
         old_primary_id = None
-        
+
         if len(existing.data) == 0:
             is_primary = True
         else:
@@ -65,7 +169,7 @@ def process_job(job):
             {
                 "institution_id": institution_id,
                 "student_id": student_id,
-                "face_embedding": result["embedding"],
+                "face_embedding": new_embedding,
                 "embedding_model": result["embedding_model"],
                 "embedding_version": 1,
                 "is_primary": is_primary,
