@@ -31,6 +31,45 @@ with"** field first — that's the actual to-do list, not a summary to skim.
 
 ---
 
+### 2026-09-08 — Session 8
+**Goal for this session:** Verify remote migrations, harden security policies, add duplicate-face detection, clean test data, implement student deletion (hard/soft), and fix audit log discrepancies.
+**Done:**
+- Verified migration 0031 (`attendance_config` INSERT policy) is live on remote via `pg_policies` direct query.
+- Removed unneeded admin-client privilege escalation for enrollment photo signed URLs in `apps/web/app/students/[id]/page.tsx` and updated `OPERATIONS.md`.
+- Implemented duplicate-face enrollment detection in `services/camera-service/app/enrollment/worker.py` (including demoted-photo bypass fix) and added comprehensive unit tests in `services/camera-service/tests/test_duplicate_enrollment.py`.
+- Cleaned up stale/duplicate test data (today's test runs and legacy Aug 24–30 junk data).
+- Identified and resolved a security vulnerability: unpinned `search_path` on `current_institution_id()` and `current_user_role()` via migration `0035_pin_search_path_on_remaining_helpers.sql`, logged in `docs/DECISIONS.md`.
+- Implemented complete student deletion workflow: migration `0034_students_deleted_at_and_delete_policy.sql`, `deleteStudent()` server action in `apps/web/lib/enrollment/actions.ts` (with hard vs soft archive logic checking 6 history tables and writing structured `audit_logs`), client confirmation dialog (`DeleteStudentButton.tsx`), filtered main `/students` list, and added `/students/archived` route.
+- Fixed schema field-name mismatches in `resolveReviewItem()` (`apps/web/lib/enrollment/attendance.ts`) to use `actor_user_id`, `metadata`, `entity_type: 'final_attendance'`, and `entity_id`.
+**Files changed:**
+- `docs/PROGRESS-enrollment.md`
+- `docs/DECISIONS.md`
+- `OPERATIONS.md`
+- `services/camera-service/app/enrollment/worker.py`
+- `services/camera-service/tests/test_duplicate_enrollment.py`
+- `supabase/migrations/0034_students_deleted_at_and_delete_policy.sql`
+- `supabase/migrations/0035_pin_search_path_on_remaining_helpers.sql`
+- `apps/web/lib/enrollment/actions.ts`
+- `apps/web/lib/enrollment/attendance.ts`
+- `apps/web/app/students/page.tsx`
+- `apps/web/app/students/archived/page.tsx`
+- `apps/web/app/students/[id]/page.tsx`
+- `apps/web/app/students/[id]/DeleteStudentButton.tsx`
+**Left / not done:**
+- Review queue resolution (`resolveReviewItem()`) not yet verified against live UI due to no existing `uncertain`/`camera_issue` rows in `final_attendance`.
+- Cross-student duplicate-face query in `worker.py` lacks pagination for large biometrics datasets (>1000 rows).
+- Photo cleanup after dismissing duplicate-flagged jobs.
+**Next session should start with:**
+- Spot-check `resolveReviewItem()` against a real `uncertain`/`camera_issue` record once one exists.
+- Consider other ambiguous/unverified items (check-in CSV import, student dispute filing, permitted-exit UI) if time allows.
+**Open questions for teammate:**
+- Memory files (`CLAUDE.md`, `docs/ARCHITECTURE.md`, `docs/DECISIONS.md`, `docs/PROGRESS*.md`, `OPERATIONS.md`) gitignore item still flagged for Akhil to confirm.
+- Note that `ajaytomar` (`332487b0...`) still has cross-referenced `attendance_observations` and should not be deleted without checking with Akhil since it's used in shared-table test data.
+**Blockers:**
+- None.
+
+---
+
 - **2026-09-08 Verification Note:** Migration 0031's `attendance_config` INSERT policy was verified live on remote via direct `pg_policies` query on 2026-09-08 — confirmed working, no further action needed.
 
 ---
