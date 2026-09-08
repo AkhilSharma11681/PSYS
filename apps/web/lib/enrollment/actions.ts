@@ -219,3 +219,119 @@ export async function dismissFailedEnrollmentJob(jobId: string, studentId: strin
 
   revalidatePath(`/students/${studentId}`)
 }
+
+export async function deleteStudent(studentId: string) {
+  const user = await getCurrentUser()
+  if (!user || user.role !== 'admin') {
+    throw new Error('Unauthorized: only admins can delete students')
+  }
+
+  checkRateLimit(`deleteStudent:${user.institution_id}`, 10, 60_000)
+
+  const supabase = await createClient()
+
+  // 1. Fetch student info
+  const { data: student, error: fetchError } = await supabase
+    .from('students')
+    .select('institution_id, full_name, roll_number')
+    .eq('id', studentId)
+    .single()
+
+  if (fetchError || !student) {
+    throw new Error(`Failed to fetch student details: ${fetchError?.message || 'Not found'}`)
+  }
+
+  // 2. Check for history
+  const [
+    { count: enrollmentCount },
+    { count: obsCount },
+    { count: finalAttCount },
+    { count: disputesCount },
+    { count: excCount },
+    { count: extCount }
+  ] = await Promise.all([
+    supabase.from('class_enrollments').select('id', { count: 'exact', head: true }).eq('student_id', studentId),
+    supabase.from('attendance_observations').select('id', { count: 'exact', head: true }).eq('student_id', studentId),
+    supabase.from('final_attendance').select('id', { count: 'exact', head: true }).eq('student_id', studentId),
+    supabase.from('disputes').select('id', { count: 'exact', head: true }).eq('student_id', studentId),
+    supabase.from('session_exceptions').select('id', { count: 'exact', head: true }).eq('student_id', studentId),
+    supabase.from('external_checkin_events').select('id', { count: 'exact', head: true }).eq('student_id', studentId),
+  ])
+
+  const hasHistory = (
+    (enrollmentCount || 0) > 0 ||
+    (obsCount || 0) > 0 ||
+    (finalAttCount || 0) > 0 ||
+    (disputesCount || 0) > 0 ||
+    (excCount || 0) > 0 ||
+    (extCount || 0) > 0
+  )
+
+  let mode: 'hard' | 'soft' = 'hard'
+
+  if (hasHistory) {
+    // 3B. Soft Delete
+    mode = 'soft'
+    const { error: updateError } = await supabase
+      .from('students')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', studentId)
+      
+    if (updateError) throw new Error(`Failed to soft-delete student: ${updateError.message}`)
+  } else {
+    // 3A. Hard Delete
+    mode = 'hard'
+    
+    const { error: biometricsError } = await supabase
+      .from('student_biometrics')
+      .delete()
+      .eq('student_id', studentId)
+      
+    if (biometricsError) throw new Error(`Failed to delete biometrics: ${biometricsError.message}`)
+    
+    // Delete enrollment_jobs and associated storage photos
+    const { data: jobs } = await supabase
+      .from('enrollment_jobs')
+      .select('id, storage_path')
+      .eq('student_id', studentId)
+      
+    if (jobs && jobs.length > 0) {
+      const pathsToDelete = jobs.map(j => j.storage_path).filter(Boolean) as string[]
+      if (pathsToDelete.length > 0) {
+        await supabase.storage.from('enrollment-photos').remove(pathsToDelete)
+      }
+      
+      const { error: jobsError } = await supabase
+        .from('enrollment_jobs')
+        .delete()
+        .eq('student_id', studentId)
+        
+      if (jobsError) throw new Error(`Failed to delete enrollment jobs: ${jobsError.message}`)
+    }
+    
+    // Hard delete the student using the new admin-scoped DELETE policy
+    const { error: deleteError } = await supabase
+      .from('students')
+      .delete()
+      .eq('id', studentId)
+      
+    if (deleteError) throw new Error(`Failed to delete student row: ${deleteError.message}`)
+  }
+
+  // Log to audit_logs
+  await supabase.from('audit_logs').insert({
+    institution_id: student.institution_id,
+    actor_user_id: user.id,
+    action: 'student_deleted',
+    entity_type: 'student',
+    entity_id: studentId,
+    metadata: {
+      full_name: student.full_name,
+      roll_number: student.roll_number,
+      mode
+    }
+  })
+
+  revalidatePath('/students')
+  return { mode }
+}

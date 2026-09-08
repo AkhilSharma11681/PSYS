@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { addEnrollmentPhoto, updateStudent, confirmConsent, dismissFailedEnrollmentJob } from '@/lib/enrollment/actions'
+import DeleteStudentButton from './DeleteStudentButton'
 
 export default async function StudentDetailPage({
   params,
@@ -205,13 +206,29 @@ export default async function StudentDetailPage({
         )}
 
         {/* Add Photo */}
-        <section>
+        <section className="mb-8">
           <h2 className="text-sm font-semibold mb-3">Add Photo</h2>
           <div className="card">
             <form action={addPhoto} className="flex items-center gap-3">
               <input type="file" name="photo" accept="image/*" required className="text-sm" />
               <button type="submit" className="btn-primary">Upload</button>
             </form>
+          </div>
+        </section>
+
+        {/* Danger Zone */}
+        <section>
+          <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--accent-bad)' }}>Danger Zone</h2>
+          <div className="card">
+            <div className="flex items-center justify-between">
+              <div className="mr-8">
+                <p className="text-sm font-medium mb-1">Delete Student</p>
+                <p className="text-xs m-0" style={{ color: 'var(--muted)' }}>
+                  Permanently delete this student if they have no attendance history, or archive them if attendance records exist.
+                </p>
+              </div>
+              <DeleteStudentButton studentId={student.id} studentName={student.full_name} />
+            </div>
           </div>
         </section>
       </div>
