@@ -31,6 +31,10 @@ with"** field first — that's the actual to-do list, not a summary to skim.
 
 ---
 
+- **2026-09-08 Verification Note:** Migration 0031's `attendance_config` INSERT policy was verified live on remote via direct `pg_policies` query on 2026-09-08 — confirmed working, no further action needed.
+
+---
+
 ## Test accounts (manual UI testing)
 
 Five Supabase Auth users exist on the linked remote project for manual testing.
