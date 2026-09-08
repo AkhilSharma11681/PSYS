@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/admin'
 import { addEnrollmentPhoto, updateStudent, confirmConsent, dismissFailedEnrollmentJob } from '@/lib/enrollment/actions'
 
 export default async function StudentDetailPage({
@@ -41,12 +40,11 @@ export default async function StudentDetailPage({
     .neq('status', 'done')
     .order('created_at', { ascending: false })
 
-  const admin = createAdminClient()
   const jobPhotoUrls: Record<string, string> = {}
   if (pendingJobs) {
     for (const job of pendingJobs) {
       if (job.storage_path) {
-        const { data: signed } = await admin.storage
+        const { data: signed } = await supabase.storage
           .from('enrollment-photos')
           .createSignedUrl(job.storage_path, 300)
         if (signed?.signedUrl) {
