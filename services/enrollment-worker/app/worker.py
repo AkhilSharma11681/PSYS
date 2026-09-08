@@ -112,14 +112,13 @@ def process_job(job):
         new_embedding = result["embedding"]
         new_quality = result["quality_score"]
 
-        # Cross-student duplicate check: compare new embedding against primary embeddings of other students in the same institution
+        # Cross-student duplicate check: compare new embedding against all embeddings of other students in the same institution
         match_threshold = get_match_threshold(institution_id)
         other_biometrics = (
             supabase.table("student_biometrics")
             .select("student_id, face_embedding")
             .eq("institution_id", institution_id)
             .neq("student_id", student_id)
-            .eq("is_primary", True)
             .execute()
         )
 

@@ -87,7 +87,7 @@ def run_tests():
     tests_passed += 1
 
     # Test 6: Mismatched embedding dimensions are skipped gracefully
-    total_tests = 6
+    total_tests = 7
     mismatched_embedding = [0.0] * 512  # different length
     other_biometrics = [
         {"student_id": "student-mismatch", "face_embedding": mismatched_embedding}
@@ -97,6 +97,19 @@ def run_tests():
     assert collided_id is None
     assert dist is None
     print(f"✓ Case 6 passed: Mismatched dimensions (128 vs 512) skipped gracefully without raising errors")
+    tests_passed += 1
+
+    # Test 7: Matches a student's demoted (non-primary) photo even when primary is different
+    # Simulates student-multi having primary (far) and demoted (close) embeddings in DB
+    other_biometrics = [
+        {"student_id": "student-multi", "face_embedding": far_embedding},  # e.g. current primary
+        {"student_id": "student-multi", "face_embedding": close_embedding}, # e.g. demoted historical
+    ]
+    is_dup, collided_id, dist = is_duplicate_face(base_embedding, other_biometrics, threshold)
+    assert is_dup is True, "Expected duplicate to be True when matching a demoted non-primary embedding"
+    assert collided_id == "student-multi", f"Expected collided_id to be 'student-multi', got {collided_id}"
+    assert abs(dist - 0.25) < 1e-6, f"Expected distance 0.25, got {dist}"
+    print(f"✓ Case 7 passed: Collision with demoted (non-primary) embedding of a student detected (collided with {collided_id} at distance {dist:.4f})")
     tests_passed += 1
 
     print("==================================================================")
