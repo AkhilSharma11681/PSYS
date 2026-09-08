@@ -41,6 +41,4 @@ Spec Section 9 "Access" requirement is enforced:
 - Admins see their institution (via RLS)
 - Storage uploads are scoped to the user's institution folder
 
-**Note:** `apps/web/lib/supabase/admin.ts` still exists but is no longer used
-by Server Actions. It can be removed in a future cleanup or kept for truly
-admin-only operations if needed.
+**Note:** `apps/web/lib/supabase/admin.ts` is actively used in `apps/web/app/students/[id]/page.tsx` to generate signed URLs for enrollment photos and should not be removed.
