@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentUser } from '@/lib/auth/session'
+import StudentsViewSwitcher from '../StudentsViewSwitcher'
 
 export default async function ArchivedStudentsPage() {
   const user = await getCurrentUser()
@@ -16,11 +17,13 @@ export default async function ArchivedStudentsPage() {
   return (
     <div className="page-shell">
       <div className="page-inner">
-        <Link href="/students" className="link-accent text-xs mb-3 inline-block">← Back to Students</Link>
         <div className="flex items-center justify-between mb-1">
           <div>
             <p className="page-eyebrow">Enrollment</p>
-            <h1 className="page-title" style={{ marginBottom: 0 }}>Archived Students</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="page-title" style={{ marginBottom: 0 }}>Students</h1>
+              <StudentsViewSwitcher currentView="archived" />
+            </div>
           </div>
         </div>
         <p className="page-subtitle">

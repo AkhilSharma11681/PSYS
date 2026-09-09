@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentUser } from '@/lib/auth/session'
+import StudentsViewSwitcher from './StudentsViewSwitcher'
 
 const STATUS_BADGE: Record<string, string> = {
   active: 'badge-good',
@@ -35,10 +36,12 @@ export default async function StudentsPage() {
         <div className="flex items-center justify-between mb-1">
           <div>
             <p className="page-eyebrow">Enrollment</p>
-            <h1 className="page-title" style={{ marginBottom: 0 }}>Students</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="page-title" style={{ marginBottom: 0 }}>Students</h1>
+              <StudentsViewSwitcher currentView="active" />
+            </div>
           </div>
           <div className="flex gap-2">
-            <Link href="/students/archived" className="btn-secondary">Archived</Link>
             <Link href="/students/bulk-import" className="btn-secondary">Bulk Import</Link>
             <Link href="/students/new" className="btn-primary">+ Add Student</Link>
           </div>
