@@ -49,32 +49,34 @@ export default async function SessionsPage() {
         {sessions && sessions.length === 0 ? (
           <p className="ledger-empty">No sessions yet.</p>
         ) : (
-          <div className="ledger">
-            <div className="ledger-head" style={{ gridTemplateColumns: '2fr 1.5fr 1fr 1fr' }}>
-              <div>Subject</div>
-              <div>Scheduled</div>
-              <div>Status</div>
-              <div>Processing</div>
+          <div className="card">
+            <div className="ledger">
+              <div className="ledger-head" style={{ gridTemplateColumns: '2fr 1.5fr 1fr 1fr' }}>
+                <div>Subject</div>
+                <div>Scheduled</div>
+                <div>Status</div>
+                <div>Processing</div>
+              </div>
+              {sessions?.map((s: any) => (
+                <Link
+                  key={s.id}
+                  href={`/sessions/${s.id}`}
+                  className="ledger-row"
+                  style={{ gridTemplateColumns: '2fr 1.5fr 1fr 1fr' }}
+                >
+                  <div className="text-sm font-medium">{s.classes?.subject || '(no class)'}</div>
+                  <div className="text-sm" style={{ color: 'var(--muted)' }}>
+                    {s.scheduled_start ? new Date(s.scheduled_start).toLocaleString() : '—'}
+                  </div>
+                  <div><Badge label={s.status} variant={STATUS_BADGE[s.status] || 'badge-neutral'} /></div>
+                  <div>
+                    {s.processing_status && (
+                      <Badge label={s.processing_status} variant={PROCESSING_BADGE[s.processing_status] || 'badge-neutral'} />
+                    )}
+                  </div>
+                </Link>
+              ))}
             </div>
-            {sessions?.map((s: any) => (
-              <Link
-                key={s.id}
-                href={`/sessions/${s.id}`}
-                className="ledger-row"
-                style={{ gridTemplateColumns: '2fr 1.5fr 1fr 1fr' }}
-              >
-                <div className="text-sm font-medium">{s.classes?.subject || '(no class)'}</div>
-                <div className="text-sm" style={{ color: 'var(--muted)' }}>
-                  {s.scheduled_start ? new Date(s.scheduled_start).toLocaleString() : '—'}
-                </div>
-                <div><Badge label={s.status} variant={STATUS_BADGE[s.status] || 'badge-neutral'} /></div>
-                <div>
-                  {s.processing_status && (
-                    <Badge label={s.processing_status} variant={PROCESSING_BADGE[s.processing_status] || 'badge-neutral'} />
-                  )}
-                </div>
-              </Link>
-            ))}
           </div>
         )}
       </div>

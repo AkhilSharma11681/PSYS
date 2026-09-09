@@ -9,17 +9,17 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ id
   const user = await getCurrentUser()
   const supabase = await createClient()
 
-  const { data: cls } = await supabase
+  const { data: cls } = (await supabase
     .from('classes')
     .select('id, subject, room_id, recurrence, is_active, rooms(name)')
     .eq('id', id)
-    .single()
+    .single()) as any
 
-  const { data: enrolled } = await supabase
+  const { data: enrolled } = (await supabase
     .from('class_enrollments')
     .select('student_id, students(id, full_name, roll_number)')
     .eq('class_id', id)
-    .eq('status', 'active')
+    .eq('status', 'active')) as any
 
   const { data: students } = await supabase
     .from('students')
@@ -34,7 +34,7 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ id
     .eq('class_id', id)
     .order('scheduled_start', { ascending: false })
 
-  const enrolledIds = new Set(enrolled?.map((e) => e.student_id) || [])
+  const enrolledIds = new Set(enrolled?.map((e: any) => e.student_id) || [])
   const availableStudents = students?.filter((s) => !enrolledIds.has(s.id)) || []
 
   return (
@@ -49,7 +49,7 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ id
           <p className="text-sm" style={{ color: 'var(--muted)' }}>No students enrolled yet.</p>
         ) : (
           <ul className="ledger mb-6">
-            {enrolled?.map((e) => (
+            {enrolled?.map((e: any) => (
               <li key={e.student_id} className="ledger-row">
                 <span className="text-sm font-medium">{e.students?.full_name}</span>
                 <span className="text-xs" style={{ color: 'var(--muted)' }}>{e.students?.roll_number || '—'}</span>

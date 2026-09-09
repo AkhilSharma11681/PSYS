@@ -38,7 +38,7 @@ export default async function ClassesPage() {
         <p className="page-subtitle">{classes?.length ?? 0} class{classes?.length !== 1 ? 'es' : ''}</p>
 
         {user.role === 'admin' && (
-          <form action={createClass} className="mb-8 border rounded-lg p-5" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+          <form action={createClass} className="card p-5 mb-8">
             <h3 className="text-base font-semibold mb-3">Create New Class</h3>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
               <div>
@@ -66,21 +66,23 @@ export default async function ClassesPage() {
         {classes && classes.length === 0 ? (
           <p className="text-sm" style={{ color: 'var(--muted)' }}>No classes yet. Create one above.</p>
         ) : (
-          <div className="ledger">
-            <div className="ledger-head" style={{ gridTemplateColumns: '2fr 1fr 2fr 1fr 1fr' }}>
-              <div>Subject</div><div>Room</div><div>Recurrence</div><div>Active</div><div>Link</div>
+          <div className="card">
+            <div className="ledger">
+              <div className="ledger-head" style={{ gridTemplateColumns: '2fr 1fr 2fr 1fr 1fr' }}>
+                <div>Subject</div><div>Room</div><div>Recurrence</div><div>Active</div><div>Link</div>
+              </div>
+              {classes?.map((c: any) => (
+                <Link key={c.id} href={`/classes/${c.id}`} className="ledger-row cursor-pointer hover:bg-slate-50 transition-colors" style={{ gridTemplateColumns: '2fr 1fr 2fr 1fr 1fr' }}>
+                  <div className="text-sm font-medium">{c.subject}</div>
+                  <div className="text-sm" style={{ color: 'var(--muted)' }}>{c.rooms?.name || '—'}</div>
+                  <div className="text-sm font-mono" style={{ color: 'var(--muted)' }}>{c.recurrence || '—'}</div>
+                  <div>
+                    <span className={`badge ${c.is_active ? 'badge-good' : 'badge-warn'}`}>{c.is_active ? 'Yes' : 'No'}</span>
+                  </div>
+                  <div className="text-xs font-semibold" style={{ color: 'var(--accent-primary)' }}>Details →</div>
+                </Link>
+              ))}
             </div>
-            {classes?.map((c) => (
-              <Link key={c.id} href={`/classes/${c.id}`} className="ledger-row" style={{ gridTemplateColumns: '2fr 1fr 2fr 1fr 1fr' }}>
-                <div className="text-sm font-medium">{c.subject}</div>
-                <div className="text-sm" style={{ color: 'var(--muted)' }}>{c.rooms?.name || '—'}</div>
-                <div className="text-sm" style={{ color: 'var(--muted)' }}>{c.recurrence || '—'}</div>
-                <div>
-                  <span className={`badge ${c.is_active ? 'badge-good' : 'badge-warn'}`}>{c.is_active ? 'Yes' : 'No'}</span>
-                </div>
-                <div className="text-xs" style={{ color: 'var(--accent-good)' }}>Details →</div>
-              </Link>
-            ))}
           </div>
         )}
       </div>

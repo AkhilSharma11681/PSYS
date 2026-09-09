@@ -128,7 +128,16 @@ export default async function SessionDetailPage({
           <h1 className="page-title" style={{ marginBottom: 0 }}>
             {(session.classes as any)?.subject || '(no class)'}
           </h1>
-          <ExportCsvButton sessionId={id} />
+          <div className="flex items-center gap-3">
+            <Link
+              href={`/sessions/${id}/live`}
+              className="btn-primary text-xs flex items-center gap-1.5 py-1.5 px-3.5 shadow-sm"
+            >
+              <span>📡</span>
+              <span>Launch Live Monitor</span>
+            </Link>
+            <ExportCsvButton sessionId={id} />
+          </div>
         </div>
         <div className="flex items-center gap-3 mb-6">
           <span className="text-sm" style={{ color: 'var(--muted)' }}>
