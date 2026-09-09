@@ -63,7 +63,12 @@ export default async function StudentDetailPage({
   return (
     <div className="page-shell">
       <div className="page-inner">
-        <Link href="/students" className="link-accent text-xs mb-3 inline-block">← Back to Students</Link>
+        <Link
+          href={student.deleted_at ? '/students/archived' : '/students'}
+          className="link-accent text-xs mb-3 inline-block"
+        >
+          ← Back to {student.deleted_at ? 'Archived Students' : 'Students'}
+        </Link>
         <h1 className="page-title">{student.full_name}</h1>
         <p className="page-subtitle">Roll: {student.roll_number || '—'} &middot; {student.status}</p>
 
