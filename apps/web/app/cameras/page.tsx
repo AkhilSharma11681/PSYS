@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentUser } from '@/lib/auth/session'
 import { createCamera } from '@/lib/enrollment/cameras'
+import EditCameraForm from './EditCameraForm'
 
 export default async function CamerasPage() {
   const user = await getCurrentUser()
@@ -101,15 +102,16 @@ export default async function CamerasPage() {
         {cameras && cameras.length > 0 ? (
           <div className="card overflow-hidden">
             <div className="ledger">
-              <div className="ledger-head" style={{ gridTemplateColumns: '1.5fr 1fr 2fr 0.5fr 1fr' }}>
+              <div className="ledger-head" style={{ gridTemplateColumns: '1.5fr 1fr 2fr 0.5fr 1fr 0.5fr' }}>
                 <div>Label</div>
                 <div>Room</div>
                 <div>RTSP Endpoint</div>
                 <div>Rotation</div>
                 <div>Status</div>
+                <div>Actions</div>
               </div>
               {cameras.map((c: any) => (
-                <div key={c.id} className="ledger-row" style={{ gridTemplateColumns: '1.5fr 1fr 2fr 0.5fr 1fr' }}>
+                <div key={c.id} className="ledger-row" style={{ gridTemplateColumns: '1.5fr 1fr 2fr 0.5fr 1fr 0.5fr' }}>
                   <div className="text-sm font-semibold text-slate-900">{c.label}</div>
                   <div className="text-sm text-slate-600">{c.rooms?.name || '—'}</div>
                   <div className="text-xs font-mono text-slate-500">
@@ -118,12 +120,17 @@ export default async function CamerasPage() {
                   <div className="text-xs text-slate-500">
                     {c.rotation_degrees ? `${c.rotation_degrees}°` : '—'}
                   </div>
+
                   <div>
                     <span className={`badge ${c.is_active ? 'badge-good' : 'badge-neutral'}`}>
                       <span className="badge-dot" style={{ background: 'currentColor' }} />
                       {c.is_active ? 'Active' : 'Disabled'}
                     </span>
                   </div>
+                  <div className="relative flex items-center justify-end">
+                    <EditCameraForm camera={c} rooms={rooms || []} />
+                  </div>
+
                 </div>
               ))}
             </div>
