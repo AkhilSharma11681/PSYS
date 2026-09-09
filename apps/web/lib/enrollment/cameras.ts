@@ -9,10 +9,16 @@ export async function createCamera(formData: FormData) {
   let host = (formData.get('host') as string)?.trim()
   let streamPath = (formData.get('stream_path') as string)?.trim()
   const credentialRef = (formData.get('credential_ref') as string)?.trim()
+  const rotationDegrees = parseInt(formData.get('rotation_degrees') as string, 10) || 0
   const label = (formData.get('label') as string)?.trim() || 'primary'
 
   if (!roomId || !host || !streamPath || !credentialRef) {
     throw new Error('Room, host, stream path, and credential ref are all required')
+  }
+
+  // Validate rotation
+  if (rotationDegrees !== 0 && rotationDegrees !== 90 && rotationDegrees !== 180 && rotationDegrees !== 270) {
+      throw new Error('Rotation must be 0, 90, 180, or 270 degrees.')
   }
 
   // Strip rtsp:// or http:// if user pasted a full URL
@@ -42,6 +48,7 @@ export async function createCamera(formData: FormData) {
     stream_path: streamPath,
     credential_ref: credentialRef,
     label,
+    rotation_degrees: rotationDegrees,
   })
 
   if (error) {

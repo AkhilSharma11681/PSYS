@@ -15,7 +15,7 @@ export default async function CamerasPage() {
 
   const { data: cameras, error } = await supabase
     .from('cameras')
-    .select('id, host, stream_path, credential_ref, label, is_active, rooms(name)')
+    .select('id, host, stream_path, credential_ref, label, is_active, rotation_degrees, rooms(name)')
     .eq('institution_id', user.institution_id)
     .order('label')
 
@@ -78,6 +78,16 @@ export default async function CamerasPage() {
               />
             </div>
 
+            <div>
+              <label className="field-label">Rotation (°)</label>
+              <select name="rotation_degrees" className="field-input">
+                <option value="0">0° (None)</option>
+                <option value="90">90° (Clockwise)</option>
+                <option value="180">180°</option>
+                <option value="270">270° (Counter-clockwise)</option>
+              </select>
+            </div>
+
             <div className="md:col-span-2 pt-2">
               <button type="submit" className="btn-primary">
                 Register Camera
@@ -91,18 +101,22 @@ export default async function CamerasPage() {
         {cameras && cameras.length > 0 ? (
           <div className="card overflow-hidden">
             <div className="ledger">
-              <div className="ledger-head" style={{ gridTemplateColumns: '1.5fr 1fr 2fr 1fr' }}>
+              <div className="ledger-head" style={{ gridTemplateColumns: '1.5fr 1fr 2fr 0.5fr 1fr' }}>
                 <div>Label</div>
                 <div>Room</div>
                 <div>RTSP Endpoint</div>
+                <div>Rotation</div>
                 <div>Status</div>
               </div>
               {cameras.map((c: any) => (
-                <div key={c.id} className="ledger-row" style={{ gridTemplateColumns: '1.5fr 1fr 2fr 1fr' }}>
+                <div key={c.id} className="ledger-row" style={{ gridTemplateColumns: '1.5fr 1fr 2fr 0.5fr 1fr' }}>
                   <div className="text-sm font-semibold text-slate-900">{c.label}</div>
                   <div className="text-sm text-slate-600">{c.rooms?.name || '—'}</div>
                   <div className="text-xs font-mono text-slate-500">
                     rtsp://{c.host}{c.stream_path}
+                  </div>
+                  <div className="text-xs text-slate-500">
+                    {c.rotation_degrees ? `${c.rotation_degrees}°` : '—'}
                   </div>
                   <div>
                     <span className={`badge ${c.is_active ? 'badge-good' : 'badge-neutral'}`}>

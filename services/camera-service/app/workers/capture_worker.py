@@ -49,7 +49,8 @@ def run_capture_job(camera_id: str, session_id: str, run_at: str | None = None):
         raise SessionNotActiveError(f"session is {session.data[0]['status']}, cannot capture")
 
     rtsp_url = build_rtsp_url(camera["host"], camera["stream_path"], camera["credential_ref"])
-    frame, error = grab_frame(rtsp_url)
+    rotation_degrees = camera.get("rotation_degrees", 0) or 0
+    frame, error = grab_frame(rtsp_url, rotation_degrees=rotation_degrees)
     succeeded = frame is not None
 
     captured_at = run_at or datetime.now(timezone.utc).isoformat()
