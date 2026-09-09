@@ -128,10 +128,32 @@ def process_job(job):
             match_threshold,
         )
         if is_dup:
-            error_msg = (
-                "Photo appears to match an existing student's face "
-                "(possible duplicate enrollment). Manual review required."
-            )
+            collided_student = None
+            try:
+                stu_res = (
+                    supabase.table("students")
+                    .select("full_name, roll_number")
+                    .eq("id", collided_student_id)
+                    .maybe_single()
+                    .execute()
+                )
+                collided_student = stu_res.data
+            except Exception as e:
+                print(f"[duplicate check warning] failed to look up collided student {collided_student_id}: {e}")
+
+            if collided_student:
+                full_name = collided_student.get("full_name") or "Unknown"
+                roll_number = collided_student.get("roll_number") or "N/A"
+                error_msg = (
+                    f"Photo appears to match an existing student's face "
+                    f"(student: {full_name}, roll: {roll_number}). Manual review required."
+                )
+            else:
+                error_msg = (
+                    f"Photo appears to match an existing student's face "
+                    f"(student ID: {collided_student_id}). Manual review required."
+                )
+
             supabase.table("enrollment_jobs").update(
                 {
                     "status": "failed",
