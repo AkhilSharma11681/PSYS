@@ -335,3 +335,82 @@ export async function deleteStudent(studentId: string) {
   revalidatePath('/students')
   return { mode }
 }
+
+export async function clearStudentBiometrics(studentId: string) {
+  const user = await getCurrentUser()
+  if (!user || user.role !== 'admin') {
+    throw new Error('Unauthorized: only admins can clear biometrics')
+  }
+
+  const supabase = await createClient()
+
+  // 1. Fetch student info
+  const { data: student, error: fetchError } = await supabase
+    .from('students')
+    .select('institution_id, full_name, roll_number')
+    .eq('id', studentId)
+    .single()
+
+  if (fetchError || !student) {
+    throw new Error(`Failed to fetch student details: ${fetchError?.message || 'Not found'}`)
+  }
+
+  checkRateLimit(`clearStudentBiometrics:${student.institution_id}`, 5, 60_000)
+
+  // 2. Fetch biometric IDs to delete
+  const { data: biometrics, error: fetchBioError } = await supabase
+    .from('student_biometrics')
+    .select('id')
+    .eq('student_id', studentId)
+
+  if (fetchBioError) {
+    throw new Error(`Failed to fetch biometrics: ${fetchBioError.message}`)
+  }
+
+  const bioIds = biometrics.map(b => b.id)
+  const deletedCount = bioIds.length
+
+  if (deletedCount === 0) {
+    return { count: 0 }
+  }
+
+  // 3. Delete biometrics
+  const { error: deleteBioError } = await supabase
+    .from('student_biometrics')
+    .delete()
+    .in('id', bioIds)
+
+  if (deleteBioError) {
+    throw new Error(`Failed to delete biometrics: ${deleteBioError.message}`)
+  }
+
+  // 4. Reset photo count
+  const { error: updateError } = await supabase
+    .from('students')
+    .update({ enrollment_photo_count: 0 })
+    .eq('id', studentId)
+
+  if (updateError) {
+    throw new Error(`Failed to reset enrollment photo count: ${updateError.message}`)
+  }
+
+  // 5. Log audit trail
+  await supabase.from('audit_logs').insert({
+    institution_id: student.institution_id,
+    actor_user_id: user.id,
+    action: 'biometrics_cleared',
+    entity_type: 'student',
+    entity_id: studentId,
+    metadata: {
+      full_name: student.full_name,
+      roll_number: student.roll_number,
+      biometrics_deleted_count: deletedCount
+    }
+  })
+
+  // 6. Revalidate
+  revalidatePath(`/students/${studentId}`)
+  revalidatePath('/students/archived')
+
+  return { count: deletedCount }
+}

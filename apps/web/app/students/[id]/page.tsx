@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { addEnrollmentPhoto, updateStudent, confirmConsent, dismissFailedEnrollmentJob } from '@/lib/enrollment/actions'
 import DeleteStudentButton from './DeleteStudentButton'
+import ClearBiometricsButton from './ClearBiometricsButton'
 
 export default async function StudentDetailPage({
   params,
@@ -219,16 +220,27 @@ export default async function StudentDetailPage({
         {/* Danger Zone */}
         <section>
           <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--accent-bad)' }}>Danger Zone</h2>
-          <div className="card">
-            <div className="flex items-center justify-between">
+          <div className="card space-y-4">
+            <div className={`flex items-center justify-between ${!student.deleted_at ? 'pb-4 border-b' : ''}`} style={{ borderColor: 'var(--border)' }}>
               <div className="mr-8">
-                <p className="text-sm font-medium mb-1">Delete Student</p>
+                <p className="text-sm font-medium mb-1">Clear Face Data</p>
                 <p className="text-xs m-0" style={{ color: 'var(--muted)' }}>
-                  Permanently delete this student if they have no attendance history, or archive them if attendance records exist.
+                  Remove all biometric face embeddings and reset photo count. Allows re-enrolling face data from scratch.
                 </p>
               </div>
-              <DeleteStudentButton studentId={student.id} studentName={student.full_name} />
+              <ClearBiometricsButton studentId={student.id} studentName={student.full_name} />
             </div>
+            {!student.deleted_at && (
+              <div className="flex items-center justify-between">
+                <div className="mr-8">
+                  <p className="text-sm font-medium mb-1">Delete Student</p>
+                  <p className="text-xs m-0" style={{ color: 'var(--muted)' }}>
+                    Permanently delete this student if they have no attendance history, or archive them if attendance records exist.
+                  </p>
+                </div>
+                <DeleteStudentButton studentId={student.id} studentName={student.full_name} />
+              </div>
+            )}
           </div>
         </section>
       </div>
