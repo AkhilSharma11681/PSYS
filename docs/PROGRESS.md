@@ -623,3 +623,21 @@ Clean up via SQL before any real pilot data is loaded. The fake data passes the 
 **Blockers:**
 - None.
 
+
+### 2026-09-09 — Session (live monitor dashboard + RTSP fix + cleanup push)
+**Goal for this session:** Clean up and push pending UI/backend work; resolve stray test artifacts (photo files, local settings) that had crept into git; separate out an in-progress, not-yet-working recognition change.
+**Done:**
+- Committed and pushed: Live Monitor dashboard (`LiveSessionDashboard.tsx`, roll-call real-time view), RTSP URL parsing fix in `credentials.py` (handles full URL or path passed as host), UI polish across cameras/checkins/classes/sessions pages, `docs/OPERATIONS.md` added, camera-service test/enrollment scripts added, unused `debug_compare.py` removed.
+- Removed 5 test photo files (`person_a.jpg`, `person_b.jpg`, `person_c.jpg`, `debug_frame.jpg`, `test_image.jpg`) that had been accidentally staged — conflicted with the project's source-photo-deletion privacy rule.
+- Excluded `.claude/settings.local.json` from version control (added to `.gitignore`) — local tool permissions, not meant to be shared.
+- Pushed as commit `83d6d1e`.
+**Files changed:** see commit `83d6d1e` for full list.
+**Left / not done:**
+- Low-light recognition enhancement (`CLAHE` contrast boost in `services/camera-service/app/recognition/provider.py`) plus paired migration `0034_update_attendance_config_match_threshold.sql` (0.40→0.45 threshold) — tested by dev, did not work correctly. Left uncommitted/unstaged on disk, NOT pushed. Needs rework and proper before/after testing against existing enrolled embeddings before re-attempting.
+**Next session should start with:**
+- Diagnose why the low-light enhancement didn't work (get specifics: errors vs. wrong matches vs. performance) before rewriting.
+- If retried, test against already-enrolled embeddings to check for accuracy regression from the enhancement being applied inconsistently between enrollment and recognition.
+**Open questions for teammate:**
+- None new from this session.
+**Blockers:**
+- None for the pushed work. Low-light recognition fix is blocked pending rework.
