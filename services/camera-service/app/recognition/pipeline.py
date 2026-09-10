@@ -1,9 +1,14 @@
 from app.recognition.provider import DlibFaceRecognitionProvider, find_best_match
+from app.recognition.insightface_provider import InsightFaceRecognitionProvider
 from app.recognition.matching import fetch_candidate_embeddings
 from app.recognition.observations import log_observation
 from app.recognition.config import get_recognition_config
+from app.db.client import get_client
 
-provider = DlibFaceRecognitionProvider()
+_providers = {
+    "dlib": DlibFaceRecognitionProvider(),
+    "insightface": InsightFaceRecognitionProvider(),
+}
 
 
 def process_frame(frame, institution_id: str, session_id: str, frame_path: str = None, captured_at: str = None):
@@ -12,12 +17,27 @@ def process_frame(frame, institution_id: str, session_id: str, frame_path: str =
     same captured_at, letting the idempotency constraint on
     attendance_observations(session_id, student_id, captured_at) actually
     catch duplicates (spec Guardrail 6)."""
+
+    # 1. Determine model per-session
+    client = get_client()
+    session = client.table("class_sessions").select("recognition_model").eq("id", session_id).single().execute()
+    model = session.data.get("recognition_model") if session.data else None
+    if model:
+        model = model.lower()
+    if model not in _providers:
+        model = "dlib"
+
+    provider = _providers[model]
+
     config = get_recognition_config(institution_id)
     quality_threshold = config["quality_threshold"]
-    match_threshold = config["match_threshold"]
-    low_confidence_threshold = config["low_confidence_threshold"]
+    # NOT VALIDATED: InsightFace/ArcFace uses cosine similarity (1.0 - best_dist)
+    # whereas Dlib uses Euclidean distance.
+    # Placeholder threshold value must be reviewed and tuned in a future task.
+    match_threshold = 0.5 if model == "insightface" else config["match_threshold"]
+    low_confidence_threshold = 0.6 if model == "insightface" else config["low_confidence_threshold"]
 
-    student_ids, candidate_embeddings = fetch_candidate_embeddings(institution_id, session_id)
+    student_ids, candidate_embeddings = fetch_candidate_embeddings(institution_id, session_id, model=model)
 
     faces = provider.detect(frame)
     if not faces:

@@ -76,3 +76,4 @@
 
 
 
+- **Per-session recognition model selection (2026-09-10).** Added `recognition_model` to `class_sessions` (migration 0038) and wired it into `pipeline.py`. Individual sessions can opt-in to `insightface` without affecting default `dlib` sessions. The pipeline instantiates providers lazily and caches them per-model (`_providers` dictionary) to avoid overhead. Thresholds for InsightFace are currently unvalidated placeholders (0.5 for match, 0.6 for low_confidence) and MUST be tuned in a follow-up task.

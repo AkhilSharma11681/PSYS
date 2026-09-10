@@ -30,6 +30,31 @@ At the START of a new session, read the most recent entry's **"Next session shou
 with"** field first — that's the actual to-do list, not a summary to skim.
 
 ---
+
+### 2026-09-10 — Session 9 (Per-Session Recognition Model Selection & InsightFace Pipeline Wiring)
+**Goal for this session:** Wire `InsightFaceRecognitionProvider` into live recognition pipeline via per-session `class_sessions.recognition_model` selection.
+**Done:**
+- Created migration `0038_add_session_recognition_model.sql` adding nullable `recognition_model` column to `class_sessions`.
+- Updated `services/camera-service/app/recognition/pipeline.py` to dynamically load `DlibFaceRecognitionProvider` or `InsightFaceRecognitionProvider` per session.
+- Configured model-aware `fetch_candidate_embeddings` call passing `model=model` (fetches `face_embedding_v2` for `insightface` sessions, `face_embedding` for default/dlib).
+- Set unvalidated placeholder thresholds for InsightFace in `pipeline.py` (0.5 for match, 0.6 for low confidence).
+- Documented per-session model selection in `docs/DECISIONS.md`.
+**Files changed:**
+- `supabase/migrations/0038_add_session_recognition_model.sql`
+- `services/camera-service/app/recognition/pipeline.py`
+- `docs/DECISIONS.md`
+- `docs/PROGRESS-camera.md`
+**Left / not done:**
+- Threshold validation and tuning for InsightFace cosine similarity scale.
+- Real hardware / live session end-to-end testing with `insightface` session.
+**Next session should start with:**
+- Calibrate and validate InsightFace thresholds on empirical dataset.
+**Open questions for teammate:**
+- None.
+**Blockers:**
+- None.
+
+---
 ### 2026-09-02 — Session (Step 6: Supabase Link & Migration 0033 Verification)
 **Goal for this session:** Link Supabase CLI, verify migration 0033 state, and prepare for 3-person hardware test.
 **Done:**
