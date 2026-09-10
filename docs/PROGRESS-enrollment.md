@@ -115,6 +115,7 @@ with"** field first — that's the actual to-do list, not a summary to skim.
 
 - **2026-09-08 Verification Note:** Migration 0031's `attendance_config` INSERT policy was verified live on remote via direct `pg_policies` query on 2026-09-08 — confirmed working, no further action needed.
 - **2026-09-10 InsightFace Enrollment Note:** Enrollment flow updated to generate dual embeddings (dlib 128-D `face_embedding` and InsightFace 512-D `face_embedding_v2`) on `student_biometrics` for all new enrollments. UI updated on student detail page to display InsightFace embedding status badge per enrollment photo.
+- **2026-09-11 Test Student Dual Embedding Note:** Generated and verified InsightFace embedding (`face_embedding_v2`, 512-D) for test student Rohan (`569c5308-4b6a-4aa3-918d-bf1b155fadb4`) in "Test University" using existing photo and dual-embedding tooling (`camera-service /internal/embed` + `enrollment-worker`) to enable multi-student InsightFace live testing.
 
 
 ---
