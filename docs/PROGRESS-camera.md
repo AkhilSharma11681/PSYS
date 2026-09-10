@@ -31,6 +31,27 @@ with"** field first — that's the actual to-do list, not a summary to skim.
 
 ---
 
+### 2026-09-11 — Session 10 (Live InsightFace Session 1 Test)
+**Goal for this session:** Run live InsightFace verification test on an existing session to evaluate matcher behavior before tuning constants.
+**Done:**
+- On `main` branch, manually updated DB `class_sessions` row for Session 1 (`3ac542c7-bbc5-45d4-865a-a7b5aa67e237`) setting `recognition_model = 'insightface'`.
+- Ran `test_pipeline.py` using the dedicated `psys-camera` python environment to bypass missing `supabase` deps in the default env.
+- Ran tests against `ansh.jpg`, `rohan.jpeg`, `aditya raj.jpeg`, and `akhil.jpg`.
+- Verified that students with InsightFace 512-D embeddings match with high confidence, while students lacking InsightFace embeddings (Akhil Sharma) are correctly handled as `unknown_face` during matching because the candidate list is scoped to available model embeddings.
+- Left the session's model configured as `recognition_model = 'insightface'` in the DB.
+**Files changed:**
+- `docs/PROGRESS-camera.md`
+**Left / not done:**
+- Tuning thresholds based on the exact Cosine Similarity bounds observed (placeholder 0.5/0.6 remain).
+**Next session should start with:**
+- Review the `test_pipeline.py` results to tune the `0.5` match and `0.6` low_confidence threshold placeholders in `services/camera-service/app/recognition/pipeline.py` to match the exact distances recorded.
+**Open questions for teammate:**
+- None.
+**Blockers:**
+- None.
+
+---
+
 ### 2026-09-10 — Session 9 (Per-Session Recognition Model Selection & InsightFace Pipeline Wiring)
 **Goal for this session:** Wire `InsightFaceRecognitionProvider` into live recognition pipeline via per-session `class_sessions.recognition_model` selection.
 **Done:**
