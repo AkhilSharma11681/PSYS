@@ -10,6 +10,8 @@ _providers = {
     "insightface": InsightFaceRecognitionProvider(),
 }
 
+_session_model_cache = {}
+
 
 def process_frame(frame, institution_id: str, session_id: str, frame_path: str = None, captured_at: str = None):
     """captured_at is now passed in from capture_worker (the moment the frame
@@ -19,14 +21,17 @@ def process_frame(frame, institution_id: str, session_id: str, frame_path: str =
     catch duplicates (spec Guardrail 6)."""
 
     # 1. Determine model per-session
-    client = get_client()
-    session = client.table("class_sessions").select("recognition_model").eq("id", session_id).single().execute()
-    model = session.data.get("recognition_model") if session.data else None
-    if model:
-        model = model.lower()
-    if model not in _providers:
-        model = "dlib"
+    if session_id not in _session_model_cache:
+        client = get_client()
+        session = client.table("class_sessions").select("recognition_model").eq("id", session_id).single().execute()
+        model = session.data.get("recognition_model") if session.data else None
+        if model:
+            model = model.lower()
+        if model not in _providers:
+            model = "dlib"
+        _session_model_cache[session_id] = model
 
+    model = _session_model_cache[session_id]
     provider = _providers[model]
 
     config = get_recognition_config(institution_id)
