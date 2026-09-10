@@ -3,6 +3,19 @@ import { createClient } from '@/lib/supabase/server'
 import { getCurrentUser } from '@/lib/auth/session'
 import { createClass } from '@/lib/enrollment/classes'
 
+interface ClassRoom {
+  name: string
+}
+
+interface ClassData {
+  id: string
+  subject: string
+  room_id: string
+  recurrence: string | null
+  is_active: boolean
+  rooms: ClassRoom | null
+}
+
 export default async function ClassesPage() {
   const user = await getCurrentUser()
   const supabase = await createClient()
@@ -12,6 +25,7 @@ export default async function ClassesPage() {
     .select('id, subject, room_id, recurrence, is_active, rooms(name)')
     .eq('institution_id', user.institution_id)
     .order('subject')
+    .returns<ClassData[]>()
 
   const { data: students } = await supabase
     .from('students')

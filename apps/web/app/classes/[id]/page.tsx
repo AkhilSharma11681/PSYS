@@ -4,6 +4,37 @@ import { getCurrentUser } from '@/lib/auth/session'
 import { enrollStudent } from '@/lib/enrollment/classes'
 import ScheduleSessionForm from '../ScheduleSessionForm'
 
+interface Student {
+  id: string
+  full_name: string
+  roll_number: string | null
+}
+
+interface ClassRoom {
+  name: string
+}
+
+interface ClassData {
+  id: string
+  subject: string
+  room_id: string
+  recurrence: string | null
+  is_active: boolean
+  rooms: ClassRoom | null
+}
+
+interface EnrolledStudent {
+  student_id: string
+  students: Student | null
+}
+
+interface Session {
+  id: string
+  scheduled_start: string
+  scheduled_end: string
+  status: string
+}
+
 export default async function ClassDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const user = await getCurrentUser()
@@ -13,6 +44,7 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ id
     .from('classes')
     .select('id, subject, room_id, recurrence, is_active, rooms(name)')
     .eq('id', id)
+    .returns<ClassData[]>()
     .single()
 
   const { data: enrolled } = await supabase
@@ -20,6 +52,7 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ id
     .select('student_id, students(id, full_name, roll_number)')
     .eq('class_id', id)
     .eq('status', 'active')
+    .returns<EnrolledStudent[]>()
 
   const { data: students } = await supabase
     .from('students')
@@ -27,12 +60,14 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ id
     .eq('institution_id', user.institution_id)
     .eq('status', 'active')
     .order('full_name')
+    .returns<Student[]>()
 
   const { data: sessions } = await supabase
     .from('class_sessions')
     .select('id, scheduled_start, scheduled_end, status')
     .eq('class_id', id)
     .order('scheduled_start', { ascending: false })
+    .returns<Session[]>()
 
   const enrolledIds = new Set(enrolled?.map((e) => e.student_id) || [])
   const availableStudents = students?.filter((s) => !enrolledIds.has(s.id)) || []
