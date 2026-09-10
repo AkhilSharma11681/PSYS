@@ -31,7 +31,7 @@ export default async function StudentDetailPage({
 
   const { data: photos } = await supabase
     .from('student_biometrics')
-    .select('id, quality_score, is_primary, created_at')
+    .select('id, quality_score, is_primary, created_at, face_embedding_v2')
     .eq('student_id', id)
     .order('created_at', { ascending: false })
 
@@ -152,6 +152,11 @@ export default async function StudentDetailPage({
                       <span>Quality: {p.quality_score?.toFixed(2)}</span>
                       {p.is_primary && (
                         <span className="badge badge-good ml-2" style={{ fontSize: '0.65rem' }}>primary</span>
+                      )}
+                      {p.face_embedding_v2 ? (
+                        <span className="badge badge-good ml-2" style={{ fontSize: '0.65rem' }}>InsightFace ✓</span>
+                      ) : (
+                        <span className="badge badge-neutral ml-2" style={{ fontSize: '0.65rem', color: 'var(--muted)' }}>InsightFace: pending</span>
                       )}
                     </div>
                     {(p.quality_score ?? 1) < 0.5 && (
