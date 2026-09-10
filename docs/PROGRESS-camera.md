@@ -47,8 +47,9 @@ with"** field first — that's the actual to-do list, not a summary to skim.
 **Left / not done:**
 - Threshold validation and tuning for InsightFace cosine similarity scale.
 - Real hardware / live session end-to-end testing with `insightface` session.
+- **Current System State:** InsightFace is fully wired into the live pipeline and is functional, but ZERO sessions currently have `recognition_model` set to 'insightface' — every live session today is still running dlib-only. This is a deliberate pause point, not a bug.
 **Next session should start with:**
-- Calibrate and validate InsightFace thresholds on empirical dataset.
+- Manually set one test session's `recognition_model` to 'insightface' via SQL, run a live test, then use real results to validate/tune the placeholder thresholds (0.5 match, 0.6 low-confidence — currently unvalidated).
 **Open questions for teammate:**
 - None.
 **Blockers:**

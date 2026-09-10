@@ -31,6 +31,29 @@ with"** field first — that's the actual to-do list, not a summary to skim.
 
 ---
 
+### 2026-09-10 — Session 9
+**Goal for this session:** Clean up test data, re-enroll pilot student, and wire InsightFace embedding generation into enrollment flow.
+**Done:**
+- Deleted 10 junk/test students (Aditya Raj, Akhil Sharma, Ansh Tomar, navee, Rohan, Aisha Mehta, Ajay Tomar, Test Student One/Two/Three).
+- Re-enrolled Ansh Tomar as a real pilot student.
+- Wired InsightFace embedding generation into the enrollment flow (`camera-service /internal/embed` + `enrollment-worker`). New enrollments now dual-embed (dlib + InsightFace).
+- Added UI badge on student detail page identifying InsightFace status per enrollment photo.
+**Files changed:**
+- `docs/DECISIONS.md`
+- `docs/PROGRESS-enrollment.md`
+- `apps/web/app/students/[id]/page.tsx`
+- (and backend worker/service files linked to camera-service tasks)
+**Left / not done:**
+- Spot-check `resolveReviewItem()` against a real `uncertain`/`camera_issue` record once one exists.
+**Next session should start with:**
+- Flip one test session's `recognition_model` to 'insightface' run a live test, then use real results to validate/tune the placeholder thresholds.
+**Open questions for teammate:**
+- Memory files (`.gitignore` item) still flagged for Akhil to confirm.
+**Blockers:**
+- None.
+
+---
+
 ### 2026-09-08 — Session 8
 **Goal for this session:** Verify remote migrations, harden security policies, add duplicate-face detection, clean test data, implement student deletion (hard/soft), and fix audit log discrepancies.
 **Done:**
