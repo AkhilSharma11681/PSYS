@@ -11,6 +11,7 @@ from slowapi.errors import RateLimitExceeded
 
 from app.workers.capture_worker import run_capture_job, TenantMismatchError, SessionNotActiveError
 from app.recognition.provider import DlibFaceRecognitionProvider
+from app.recognition.insightface_provider import InsightFaceRecognitionProvider
 from app.finalization.orchestrator import finalize_session
 from app.finalization.review import get_review_queue
 from app.finalization.disputes import create_dispute, resolve_dispute
@@ -25,6 +26,7 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 embed_provider = DlibFaceRecognitionProvider()
+insight_provider = InsightFaceRecognitionProvider()
 
 
 @app.get("/health")
@@ -70,8 +72,29 @@ async def internal_embed(request: Request, file: UploadFile = File(...)):
     quality = embed_provider.quality(frame, face)
     embedding = embed_provider.embed(frame, face)
 
-    return {"faces_detected": 1, "quality_score": quality,
-            "embedding": embedding, "embedding_model": "dlib_resnet_v1"}
+    # Attempt InsightFace (ArcFace 512-D) embedding generation
+    embedding_v2 = None
+    try:
+        # Convert RGB to BGR for InsightFace app.get()
+        import cv2
+        bgr_frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+        insight_faces = insight_provider.detect(bgr_frame)
+        if len(insight_faces) == 1:
+            embedding_v2 = insight_provider.embed(bgr_frame, insight_faces[0])
+        elif len(insight_faces) > 1:
+            print(f"[internal_embed] InsightFace detected multiple faces ({len(insight_faces)}), skipping v2 embedding")
+        else:
+            print("[internal_embed] InsightFace detected 0 faces, skipping v2 embedding")
+    except Exception as e:
+        print(f"[internal_embed warning] InsightFace embedding generation failed: {e}")
+
+    return {
+        "faces_detected": 1,
+        "quality_score": quality,
+        "embedding": embedding,
+        "embedding_v2": embedding_v2,
+        "embedding_model": "dlib_resnet_v1"
+    }
 
 
 @app.post("/sessions/{session_id}/finalize")

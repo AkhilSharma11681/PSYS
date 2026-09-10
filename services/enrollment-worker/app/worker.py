@@ -60,6 +60,28 @@ def get_match_threshold(institution_id: str) -> float:
     return threshold
 
 
+def fetch_other_biometrics(institution_id: str, student_id: str, batch_size: int = 1000) -> list[dict]:
+    """Fetch all biometrics for other students in the institution with pagination
+    to avoid PostgREST default limit truncation."""
+    all_rows = []
+    offset = 0
+    while True:
+        res = (
+            supabase.table("student_biometrics")
+            .select("student_id, face_embedding, face_embedding_v2")
+            .eq("institution_id", institution_id)
+            .neq("student_id", student_id)
+            .range(offset, offset + batch_size - 1)
+            .execute()
+        )
+        data = res.data or []
+        all_rows.extend(data)
+        if len(data) < batch_size:
+            break
+        offset += batch_size
+    return all_rows
+
+
 def is_duplicate_face(
     new_embedding: list[float],
     other_biometrics: list[dict],
@@ -74,12 +96,6 @@ def is_duplicate_face(
     for row in other_biometrics:
         existing_embedding = _parse_embedding(row.get("face_embedding"))
         if existing_embedding is None:
-            continue
-        if len(new_embedding) != len(existing_embedding):
-            print(
-                f"[duplicate check warning] skipped student {row.get('student_id')}: "
-                f"embedding dimension mismatch ({len(new_embedding)} vs {len(existing_embedding)})"
-            )
             continue
         dist = math.dist(new_embedding, existing_embedding)
         if dist <= threshold:
@@ -110,21 +126,16 @@ def process_job(job):
 
         result = response.json()
         new_embedding = result["embedding"]
+        new_embedding_v2 = result.get("embedding_v2")
         new_quality = result["quality_score"]
 
         # Cross-student duplicate check: compare new embedding against all embeddings of other students in the same institution
         match_threshold = get_match_threshold(institution_id)
-        other_biometrics = (
-            supabase.table("student_biometrics")
-            .select("student_id, face_embedding")
-            .eq("institution_id", institution_id)
-            .neq("student_id", student_id)
-            .execute()
-        )
+        other_biometrics = fetch_other_biometrics(institution_id, student_id)
 
         is_dup, collided_student_id, dist = is_duplicate_face(
             new_embedding,
-            other_biometrics.data or [],
+            other_biometrics,
             match_threshold,
         )
         if is_dup:
@@ -191,6 +202,7 @@ def process_job(job):
                 "institution_id": institution_id,
                 "student_id": student_id,
                 "face_embedding": new_embedding,
+                "face_embedding_v2": new_embedding_v2,
                 "embedding_model": result["embedding_model"],
                 "embedding_version": 1,
                 "is_primary": is_primary,

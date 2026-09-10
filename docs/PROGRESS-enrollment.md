@@ -71,6 +71,8 @@ with"** field first — that's the actual to-do list, not a summary to skim.
 ---
 
 - **2026-09-08 Verification Note:** Migration 0031's `attendance_config` INSERT policy was verified live on remote via direct `pg_policies` query on 2026-09-08 — confirmed working, no further action needed.
+- **2026-09-10 InsightFace Enrollment Note:** Enrollment flow updated to generate dual embeddings (dlib 128-D `face_embedding` and InsightFace 512-D `face_embedding_v2`) on `student_biometrics` for all new enrollments.
+
 
 ---
 
