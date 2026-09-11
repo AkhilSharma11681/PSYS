@@ -31,6 +31,26 @@ with"** field first — that's the actual to-do list, not a summary to skim.
 
 ---
 
+### 2026-09-11 — Session 11 (Robustness Test)
+**Goal for this session:** Test robustness of face recognition models (dlib vs insightface) against degraded/blurry photos for new enrollments.
+**Done:**
+- Verified 4 new test images in `test-images/` for newly enrolled students Abhishek and Naveen.
+- Confirmed dual embeddings (dlib `face_embedding` 128-D + InsightFace `face_embedding_v2` 512-D) exist for both students.
+- Identified both students belong to institution ID `70881552-0663-494b-8b95-59cfdd5fb246` (with no current class enrollments).
+- Executed direct pipeline matching of clear and blur photos against enrollment embeddings for both dlib and InsightFace logic side-by-side to observe score drop-off.
+**Files changed:**
+- `docs/PROGRESS-camera.md`
+**Left / not done:**
+- Live threshold tuning in `services/camera-service/app/recognition/pipeline.py`.
+**Next session should start with:**
+- Review recent test results to tune the `0.5` match and `0.6` low_confidence threshold placeholders in `services/camera-service/app/recognition/pipeline.py`.
+**Open questions for teammate:**
+- None.
+**Blockers:**
+- None.
+
+---
+
 ### 2026-09-11 — Session 10 (Live InsightFace Session 1 Test)
 **Goal for this session:** Run live InsightFace verification test on an existing session to evaluate matcher behavior before tuning constants.
 **Done:**
