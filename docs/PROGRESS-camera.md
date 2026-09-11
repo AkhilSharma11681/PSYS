@@ -46,9 +46,9 @@ with"** field first — that's the actual to-do list, not a summary to skim.
 - `docs/DECISIONS.md`
 - `docs/PROGRESS-camera.md`
 **Left / not done:**
-- Live threshold tuning in `services/camera-service/app/recognition/pipeline.py`.
+- InsightFace placeholder threshold calibration completed: analysis logged in docs/DECISIONS.md; recommend keeping 0.5/0.6 placeholders pending broader classroom data.
 **Next session should start with:**
-- Review combined robustness test results to tune the `0.5` match and `0.6` low_confidence threshold placeholders in `services/camera-service/app/recognition/pipeline.py`.
+- Proceed with pending feature work or further broad-class testing as directed by the user; threshold calibration investigation is resolved for now.
 **Open questions for teammate:**
 - None.
 **Blockers:**

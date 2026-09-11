@@ -150,3 +150,10 @@
 
 
 
+
+- **InsightFace placeholder threshold calibration (2026-09-12).**
+  - **Decision:** Keep match_threshold=0.5 and low_confidence_threshold=0.6 as-is (unchanged).
+  - **Dataset:** 18 genuine positive matches (combination of static clear/blur test photos and live RTSP session observations) and 2 genuine imposter comparisons.
+  - **Gap Observations:** Negatives topped out at ~0.18. Positives ranged from ~0.44 (live RTSP) to 1.00 (clean static).
+  - **Reasoning:** False-accept risk (marking an imposter as present) is strictly worse than false-reject risk (a genuine student landing in low_confidence/review). Given the limited imposter data, the current conservative settings sit safely outside the imposter distribution gap.
+  - **Open Limitation:** This calibration is based on a small sample (18 positive subjects, 1 imposter subject) and is NOT representative of a real classroom of 20-30+ students. Future work MUST collect broader multi-subject positive/negative data (ideally during active class sessions) before treating these as fully validated.
