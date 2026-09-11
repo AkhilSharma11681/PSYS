@@ -77,3 +77,42 @@
 
 
 - **Per-session recognition model selection (2026-09-10).** Added `recognition_model` to `class_sessions` (migration 0038) and wired it into `pipeline.py`. Individual sessions can opt-in to `insightface` without affecting default `dlib` sessions. The pipeline instantiates providers lazily and caches them per-model (`_providers` dictionary) to avoid overhead. Thresholds for InsightFace are currently unvalidated placeholders (0.5 for match, 0.6 for low_confidence) and MUST be tuned in a follow-up task.
+- **InsightFace vs dlib degraded/blur photo robustness findings (2026-09-11).**
+  - **Context:** As part of the dlib -> InsightFace migration, ran a manual comparison testing both models' ability to match a degraded (blurry/far-distance) photo against each student's clear enrollment photo embedding, across 5 students who had both dlib and InsightFace embeddings (Naveen, Abhishek, Ansh Tomar, Rohan, Hrisabh), plus Akhil Sharma tested under dlib only (no InsightFace embedding available for him at time of test).
+  - **Method:** Direct pipeline matching using each provider's embed/match logic against stored enrollment embeddings, using the existing configured thresholds (dlib: match <=0.45, low_confidence <=0.55; insightface: match <=0.5, low_confidence <=0.6 — noting these InsightFace thresholds are still unvalidated placeholders, not tuned values).
+  - **Raw Results Table:**
+
+    | Student | Photo Type | Model | Similarity Score | Distance Score | Match Status |
+    |---|---|---|---|---|---|
+    | Naveen | clear (baseline) | dlib | 1.0000 | 0.0000 | matched |
+    | Naveen | clear (baseline) | insightface | 0.9490 | 0.0510 | matched |
+    | Naveen | blur | dlib | 0.6920 | 0.3080 | matched |
+    | Naveen | blur | insightface | 0.8410 | 0.1590 | matched |
+    | Abhishek | clear (baseline) | dlib | 1.0000 | 0.0000 | matched |
+    | Abhishek | clear (baseline) | insightface | 0.9010 | 0.0990 | matched |
+    | Abhishek | blur | dlib | 0.5160 | 0.4840 | low_confidence |
+    | Abhishek | blur | insightface | 0.6220 | 0.3780 | matched |
+    | Ansh Tomar | clear (baseline) | dlib | 1.0000 | 0.0000 | matched |
+    | Ansh Tomar | clear (baseline) | insightface | 1.0000 | 0.0000 | matched |
+    | Ansh Tomar | blur | dlib | 0.5272 | 0.4728 | low_confidence |
+    | Ansh Tomar | blur | insightface | 0.6508 | 0.3492 | matched |
+    | Rohan | clear (baseline) | dlib | 1.0000 | 0.0000 | matched |
+    | Rohan | clear (baseline) | insightface | 1.0000 | 0.0000 | matched |
+    | Rohan | blur | dlib | 0.5599 | 0.4401 | matched |
+    | Rohan | blur | insightface | 0.7194 | 0.2806 | matched |
+    | Akhil Sharma | clear (baseline) | dlib | 1.0000 | 0.0000 | matched |
+    | Akhil Sharma | clear (baseline) | insightface | N/A | N/A | not applicable - no embedding |
+    | Akhil Sharma | blur | dlib | 0.5664 | 0.4336 | matched |
+    | Akhil Sharma | blur | insightface | N/A | N/A | not applicable - no embedding |
+    | Hrisabh | clear (baseline) | dlib | 1.0000 | 0.0000 | matched |
+    | Hrisabh | clear (baseline) | insightface | 1.0000 | 0.0000 | matched |
+    | Hrisabh | blur | dlib | 0.7575 | 0.2425 | matched |
+    | Hrisabh | blur | insightface | 0.7852 | 0.2148 | matched |
+
+  - **Finding:** In every one of the 5 students tested under both models, InsightFace produced a lower (better) distance score than dlib on the degraded photo. In 2 of 5 cases (Abhishek, Ansh Tomar) the difference was large enough to flip the actual match outcome — dlib classified these as low_confidence while InsightFace classified them as a clean match, using CURRENT unvalidated threshold placeholders.
+  - **Caveats:**
+    - Sample size is small (5 students with both embeddings)
+    - All test photos are single, posed, non-live shots taken specifically for this test — not real camera/RTSP footage from actual classroom conditions
+    - InsightFace's threshold values (0.5 / 0.6) are still unvalidated placeholders; this result is suggestive, not a formal validation
+    - No live/production session data has been used in this test
+  - **Status:** Early positive signal supporting the planned dlib -> InsightFace migration; does not yet constitute formal threshold validation. Live session data with real camera conditions is still needed before treating recognition_model = 'insightface' as production-ready across sessions.
