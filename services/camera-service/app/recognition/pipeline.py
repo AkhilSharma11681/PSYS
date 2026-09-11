@@ -33,6 +33,7 @@ def process_frame(frame, institution_id: str, session_id: str, frame_path: str =
 
     model = _session_model_cache[session_id]
     provider = _providers[model]
+    model_version = "dlib_resnet_v1" if model == "dlib" else model
 
     config = get_recognition_config(institution_id)
     quality_threshold = config["quality_threshold"]
@@ -47,7 +48,7 @@ def process_frame(frame, institution_id: str, session_id: str, frame_path: str =
     faces = provider.detect(frame)
     if not faces:
         log_observation(institution_id, session_id, None, captured_at, None, provider.frame_quality(frame), "no_face",
-                         evidence_photo_url=frame_path)
+                         model_version=model_version, evidence_photo_url=frame_path)
         return {"faces_detected": 0, "results": []}
 
     results = []
@@ -56,7 +57,7 @@ def process_frame(frame, institution_id: str, session_id: str, frame_path: str =
 
         if quality < quality_threshold:
             log_observation(institution_id, session_id, None, captured_at, None, quality, "poor_quality",
-                             evidence_photo_url=frame_path)
+                             model_version=model_version, evidence_photo_url=frame_path)
             results.append({"match_status": "poor_quality", "quality": quality})
             continue
 
@@ -65,7 +66,7 @@ def process_frame(frame, institution_id: str, session_id: str, frame_path: str =
 
         if best is None:
             log_observation(institution_id, session_id, None, captured_at, None, quality, "unknown_face",
-                             evidence_photo_url=frame_path)
+                             model_version=model_version, evidence_photo_url=frame_path)
             results.append({"match_status": "unknown_face"})
             continue
 
@@ -79,7 +80,7 @@ def process_frame(frame, institution_id: str, session_id: str, frame_path: str =
             matched_student_id = None
 
         log_observation(institution_id, session_id, matched_student_id, captured_at,
-                         best.similarity, quality, status, evidence_photo_url=frame_path)
+                         best.similarity, quality, status, model_version=model_version, evidence_photo_url=frame_path)
         results.append({"match_status": status, "student_id": matched_student_id,
                          "similarity": best.similarity})
 

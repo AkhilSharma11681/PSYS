@@ -38,7 +38,9 @@ with"** field first — that's the actual to-do list, not a summary to skim.
 - Confirmed Akhil Sharma currently only has dlib 128-D embedding (InsightFace test marked N/A).
 - Tested blur photos directly against enrollment embeddings under dlib and InsightFace (using the dual-embedding row for Rohan and Hrisabh).
 - Recorded side-by-side similarity and distance scores across all candidates.
+- Fixed `model_version` mislabeling bug in `pipeline.py`: explicitly mapped and passed `model_version` to `log_observation()` at all 4 call sites instead of silently falling back to `"dlib_resnet_v1"`.
 **Files changed:**
+- `services/camera-service/app/recognition/pipeline.py`
 - `docs/PROGRESS-camera.md`
 **Left / not done:**
 - Live threshold tuning in `services/camera-service/app/recognition/pipeline.py`.
