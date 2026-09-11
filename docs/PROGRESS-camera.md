@@ -39,8 +39,10 @@ with"** field first — that's the actual to-do list, not a summary to skim.
 - Tested blur photos directly against enrollment embeddings under dlib and InsightFace (using the dual-embedding row for Rohan and Hrisabh).
 - Recorded side-by-side similarity and distance scores across all candidates.
 - Fixed `model_version` mislabeling bug in `pipeline.py`: explicitly mapped and passed `model_version` to `log_observation()` at all 4 call sites instead of silently falling back to `"dlib_resnet_v1"`.
+- Investigated live InsightFace match score drop in session `bf5ecf76-7dc5-4920-bbc8-39798539caa5`: confirmed domain shift between live RTSP video capture (0.516–0.625) and static baseline tests (0.89–0.97), consistent with degraded photo drop-off profile (`ansh_blur.jpeg` at 0.6508); flagged thin margin for 0.516 match against 0.500 placeholder threshold for upcoming threshold tuning.
 **Files changed:**
 - `services/camera-service/app/recognition/pipeline.py`
+- `docs/DECISIONS.md`
 - `docs/PROGRESS-camera.md`
 **Left / not done:**
 - Live threshold tuning in `services/camera-service/app/recognition/pipeline.py`.
