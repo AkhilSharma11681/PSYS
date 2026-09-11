@@ -137,6 +137,15 @@
     2. Added `.eq("is_primary", True)` filter to `student_biometrics` query in `services/camera-service/app/recognition/matching.py`.
   - **Verification:** Executed live `process_frame()` matching on session `6c9ff1ec-d872-42fe-9b49-87d95b973930` using `ansh.jpg` and `hrishabh_clear.jpeg`. Both correctly matched their enrolled student records (`Ansh Tomar` and `Hrisabh`) with ~1.0000 similarity scores.
   - **Caveat & Open Item:** This verification used photos that may be identical to the ones used at enrollment time, so it confirms the fix is technically working but does NOT yet confirm real-world accuracy on a different, independent photo of the same person under varied conditions — that remains a separate open item.
+- **Follow-up: Independent blur-photo verification for InsightFace color space & primary biometrics fix (2026-09-12).**
+  - **Context & Correction:** The independent blur-photo verification was executed after commit `98ee428` (correcting the sequencing in the prior entry where only enrollment-equivalent clean photos were tested prior to commit).
+  - **Results on Non-Enrollment Test Photos (`process_frame()` on session `6c9ff1ec-d872-42fe-9b49-87d95b973930`):**
+    - `ansh_blur.jpeg`: Correctly matched `Ansh Tomar` (`4f662827-077c-4159-8cca-e0abca5fdc7f`) with similarity score `0.6508` (distance `0.3492`), successfully clearing the `0.5` match threshold on an independent, non-enrollment photo under degraded conditions.
+    - `hrishabh_blur.jpeg`: Resulted in `poor_quality` (quality score `0.1504` < `quality_threshold` `0.4`). The frame was rejected by the upstream quality gate before embedding or vector matching was attempted.
+  - **Assessment & Open Item:**
+    - `ansh_blur.jpeg` confirms positive generalization to independent, non-enrollment degraded imagery with the RGB/BGR fix intact.
+    - For `hrishabh_blur.jpeg`, recognition accuracy was not tested because the quality gate blocked it. Validating recognition accuracy on an independent, non-enrollment photo of Hrisabh that passes the quality gate remains an open item.
+
 
 
 
