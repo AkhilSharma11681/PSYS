@@ -31,6 +31,27 @@ with"** field first — that's the actual to-do list, not a summary to skim.
 
 ---
 
+### 2026-09-12 — Session 11
+**Goal for this session:** Spot-check `resolveReviewItem()` end-to-end and clean up test data.
+**Done:**
+- Created a temporary test route `/test-action` to trigger `resolveReviewItem()` using an authenticated session.
+- Verified `resolveReviewItem()` behavior against `final_attendance` (status updated to 'present') and `audit_logs` (audit recorded properly).
+- Cleaned up test data (`final_attendance` row, `audit_logs` entry, and the temporary test route logic).
+- Corrected schema field mismatches in `resolveReviewItem()` located in `apps/web/lib/enrollment/attendance.ts` to log proper `actor_user_id` and metadata instead of legacy `performed_by` fields.
+**Files changed:**
+- `apps/web/lib/enrollment/attendance.ts`
+- `docs/PROGRESS-enrollment.md`
+**Left / not done:**
+- None.
+**Next session should start with:**
+- Flip one test session's `recognition_model` to 'insightface', run a live test, then use real results to validate/tune the placeholder thresholds.
+**Open questions for teammate:**
+- Memory files (`.gitignore` item) still flagged for Akhil to confirm.
+**Blockers:**
+- None.
+
+---
+
 ### 2026-09-11 — Session 10
 **Goal for this session:** Fix TypeScript relation type errors in classes pages and restore progress log.
 **Done:**

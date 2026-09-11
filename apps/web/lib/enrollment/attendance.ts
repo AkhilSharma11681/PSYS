@@ -118,9 +118,10 @@ export async function resolveReviewItem(
   await supabase.from('audit_logs').insert({
     institution_id: user.institution_id,
     action: 'review_resolve',
-    performed_by: user.id,
-    details: {
-      final_attendance_id: finalAttendanceId,
+    actor_user_id: user.id,
+    entity_type: 'final_attendance',
+    entity_id: finalAttendanceId,
+    metadata: {
       session_id: sessionId,
       new_status: newStatus,
     },
