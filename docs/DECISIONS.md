@@ -128,6 +128,16 @@
   - **Finding:** Despite best-case conditions, similarity scores ranged from `0.446` to `0.610` across 9 observations. 3 of 9 landed as `low_confidence` (`0.446–0.455`), and 2 of the 6 `"matched"` observations (`0.502`, `0.502`) barely cleared the `0.5` threshold. Over half of all observations fell within a narrow band close to the current `0.5` placeholder threshold.
   - **Risk Flag:** This is under conditions expected to be easier than a real classroom (single subject, deliberate framing, close range). Real classroom conditions (distance, off-angle glances, multiple students, variable lighting) are expected to push scores lower, not higher. This reinforces the earlier single-observation margin risk flag and strengthens the case that the current `0.5`/`0.6` placeholder thresholds need real threshold validation work before being trusted in production, and may need to be lowered or reconsidered rather than tightened.
   - **Status:** Observational data point logged; does not change any threshold value or code. Threshold validation remains open/pending.
+- **InsightFace RGB/BGR color space normalization and primary biometric candidate filtering (2026-09-12).**
+  - **Context & Root Causes:** Resolved two bugs affecting InsightFace recognition accuracy:
+    1. *Color Space Channel Mismatch:* Ingestion and pipeline pathways had fragmented color conversions. InsightFace FaceAnalysis (`app.get()`) expects BGR images while PIL loads RGB, causing inverted channel inference that degraded similarity scores by ~0.35–0.45. Pre-converting in `main.py` led to duplicate conversions and regressions.
+    2. *Candidate Duplication:* `fetch_candidate_embeddings()` did not filter by `is_primary=True`, causing students with multiple `student_biometrics` rows to return duplicate candidate embeddings during vector matching.
+  - **Fixes Applied:**
+    1. Centralized RGB-to-BGR conversion inside `InsightFaceRecognitionProvider.detect()` as the single source of truth and removed duplicate `cv2.cvtColor` pre-conversions in `main.py`. Standardized grayscale conversions in `quality()` and `frame_quality()` to `cv2.COLOR_RGB2GRAY`.
+    2. Added `.eq("is_primary", True)` filter to `student_biometrics` query in `services/camera-service/app/recognition/matching.py`.
+  - **Verification:** Executed live `process_frame()` matching on session `6c9ff1ec-d872-42fe-9b49-87d95b973930` using `ansh.jpg` and `hrishabh_clear.jpeg`. Both correctly matched their enrolled student records (`Ansh Tomar` and `Hrisabh`) with ~1.0000 similarity scores.
+  - **Caveat & Open Item:** This verification used photos that may be identical to the ones used at enrollment time, so it confirms the fix is technically working but does NOT yet confirm real-world accuracy on a different, independent photo of the same person under varied conditions — that remains a separate open item.
+
 
 
 

@@ -58,6 +58,7 @@ def fetch_candidate_embeddings(institution_id: str, session_id: str, model: str 
         client.table("student_biometrics")
         .select(f"student_id, {embedding_col}")
         .in_("student_id", student_ids)
+        .eq("is_primary", True)
         .not_.is_(embedding_col, "null")
         .execute()
     )

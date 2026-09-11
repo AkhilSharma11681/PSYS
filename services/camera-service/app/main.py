@@ -75,12 +75,9 @@ async def internal_embed(request: Request, file: UploadFile = File(...)):
     # Attempt InsightFace (ArcFace 512-D) embedding generation
     embedding_v2 = None
     try:
-        # Convert RGB to BGR for InsightFace app.get()
-        import cv2
-        bgr_frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-        insight_faces = insight_provider.detect(bgr_frame)
+        insight_faces = insight_provider.detect(frame)
         if len(insight_faces) == 1:
-            embedding_v2 = insight_provider.embed(bgr_frame, insight_faces[0])
+            embedding_v2 = insight_provider.embed(frame, insight_faces[0])
         elif len(insight_faces) > 1:
             print(f"[internal_embed] InsightFace detected multiple faces ({len(insight_faces)}), skipping v2 embedding")
         else:

@@ -15,7 +15,9 @@ class InsightFaceRecognitionProvider(FaceRecognitionProvider):
     def detect(self, frame) -> list[FaceBox]:
         # Calling detect() always computes fresh results and stores them
         # as an instance attribute, making them available for subsequent embed() calls
-        self._last_detected_faces = self.app.get(frame)
+        # Convert RGB frame to BGR for InsightFace FaceAnalysis (which expects BGR arrays)
+        bgr_frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR) if frame.ndim == 3 and frame.shape[2] == 3 else frame
+        self._last_detected_faces = self.app.get(bgr_frame)
         self.get_call_count += 1
 
         # BBox format is [left, top, right, bottom]
@@ -65,7 +67,7 @@ class InsightFaceRecognitionProvider(FaceRecognitionProvider):
         size_score = min(1.0, (width * height) / (150 * 150))
 
         crop_150 = cv2.resize(crop, (150, 150))
-        gray = cv2.cvtColor(crop_150, cv2.COLOR_BGR2GRAY) # OpenCV BGR
+        gray = cv2.cvtColor(crop_150, cv2.COLOR_RGB2GRAY)
         gray_blurred = cv2.GaussianBlur(gray, (3, 3), 0)
 
         laplacian_var = cv2.Laplacian(gray_blurred, cv2.CV_64F).var()
@@ -85,7 +87,7 @@ class InsightFaceRecognitionProvider(FaceRecognitionProvider):
         if frame.size == 0:
             return 0.0
 
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY) # Assuming BGR
+        gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
         laplacian_var = cv2.Laplacian(gray, cv2.CV_64F).var()
         blur_score = min(1.0, laplacian_var / 100.0)
 
