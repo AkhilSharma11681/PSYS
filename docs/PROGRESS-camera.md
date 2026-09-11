@@ -31,6 +31,26 @@ with"** field first — that's the actual to-do list, not a summary to skim.
 
 ---
 
+### 2026-09-11 — Session 12 (Extended Robustness Test)
+**Goal for this session:** Extended clear/blur robustness comparison for dlib vs InsightFace across additional students (Ansh Tomar, Rohan, Akhil Sharma, Hrisabh).
+**Done:**
+- Verified 4 blur images in `test-images/` (`ansh_blur.jpeg`, `rohan_blur.jpeg`, `akhil_blur.jpeg`, `hrishabh_blur.jpeg`).
+- Confirmed Akhil Sharma currently only has dlib 128-D embedding (InsightFace test marked N/A).
+- Tested blur photos directly against enrollment embeddings under dlib and InsightFace (using the dual-embedding row for Rohan and Hrisabh).
+- Recorded side-by-side similarity and distance scores across all candidates.
+**Files changed:**
+- `docs/PROGRESS-camera.md`
+**Left / not done:**
+- Live threshold tuning in `services/camera-service/app/recognition/pipeline.py`.
+**Next session should start with:**
+- Review combined robustness test results to tune the `0.5` match and `0.6` low_confidence threshold placeholders in `services/camera-service/app/recognition/pipeline.py`.
+**Open questions for teammate:**
+- None.
+**Blockers:**
+- None.
+
+---
+
 ### 2026-09-11 — Session 11 (Robustness Test)
 **Goal for this session:** Test robustness of face recognition models (dlib vs insightface) against degraded/blurry photos for new enrollments.
 **Done:**
