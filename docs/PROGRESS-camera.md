@@ -40,6 +40,7 @@ with"** field first — that's the actual to-do list, not a summary to skim.
 - Recorded side-by-side similarity and distance scores across all candidates.
 - Fixed `model_version` mislabeling bug in `pipeline.py`: explicitly mapped and passed `model_version` to `log_observation()` at all 4 call sites instead of silently falling back to `"dlib_resnet_v1"`.
 - Investigated live InsightFace match score drop in session `bf5ecf76-7dc5-4920-bbc8-39798539caa5`: confirmed domain shift between live RTSP video capture (0.516–0.625) and static baseline tests (0.89–0.97), consistent with degraded photo drop-off profile (`ansh_blur.jpeg` at 0.6508); flagged thin margin for 0.516 match against 0.500 placeholder threshold for upcoming threshold tuning.
+- Verified `model_version` logging fix and analyzed score distribution on live session `6c9ff1ec-d872-42fe-9b49-87d95b973930`: all 9 observations correctly logged `model_version='insightface'`; scores ranged 0.446–0.610 (3 low_confidence, 2 borderline matches at 0.502), reinforcing the need for formal threshold tuning.
 **Files changed:**
 - `services/camera-service/app/recognition/pipeline.py`
 - `docs/DECISIONS.md`
