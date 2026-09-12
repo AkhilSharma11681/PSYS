@@ -53,7 +53,7 @@ def create_dispute(institution_id: str, final_attendance_id: str, session_id: st
     return result.data[0]
 
 
-def resolve_dispute(dispute_id: str, new_status: str, resolved_status_for_attendance: str | None = None) -> dict:
+def resolve_dispute(dispute_id: str, new_status: str, resolved_status_for_attendance: str | None = None, actor_user_id: str | None = None) -> dict:
     """new_status: 'approved' or 'rejected'. If approved and a corrected
     attendance status is given, final_attendance is updated too -- spec's
     audit_logs requirement means this correction must be traceable, not
@@ -80,6 +80,7 @@ def resolve_dispute(dispute_id: str, new_status: str, resolved_status_for_attend
     client.table("audit_logs").insert({
         "institution_id": d["institution_id"],
         "action": "dispute_resolved",
+        "actor_user_id": actor_user_id,
         "entity_type": "dispute",
         "entity_id": dispute_id,
         "metadata": {"old_status": d["status"], "new_status": new_status},
@@ -96,6 +97,7 @@ def resolve_dispute(dispute_id: str, new_status: str, resolved_status_for_attend
         client.table("audit_logs").insert({
             "institution_id": d["institution_id"],
             "action": "dispute_approved_attendance_corrected",
+            "actor_user_id": actor_user_id,
             "entity_type": "final_attendance",
             "entity_id": d["final_attendance_id"],
             "metadata": {"old_status": old_status, "new_status": resolved_status_for_attendance, "dispute_id": dispute_id},

@@ -31,6 +31,31 @@ with"** field first — that's the actual to-do list, not a summary to skim.
 
 ---
 
+### 2026-09-12 — Session 13 (Dispute Lifecycle E2E Test & Audit Log Bugfix)
+**Goal for this session:** Perform end-to-end integration test of student dispute lifecycle, identify discrepancies, and fix audit logging.
+**Done:**
+- Created and tested student dispute filing flow against `camera-service` endpoints with real JWT authentication.
+- Identified and fixed bug where `resolve_dispute` did not pass or log `actor_user_id` to `audit_logs`.
+- Updated `resolve_dispute` in `disputes.py` to accept `actor_user_id` and include it in `audit_logs` inserts.
+- Updated `resolve_dispute_endpoint` in `main.py` to extract `current_user["user_id"]` and pass it to `resolve_dispute`.
+- Verified end-to-end resolution with an admin account and confirmed `actor_user_id` is properly persisted to `audit_logs`.
+- Cleaned up all temporary test rows (disputes, attendance, and audit records).
+**Files changed:**
+- `services/camera-service/app/finalization/disputes.py`
+- `services/camera-service/app/main.py`
+- `docs/DECISIONS.md`
+- `docs/PROGRESS-camera.md`
+**Left / not done:**
+- None.
+**Next session should start with:**
+- Proceed with pending feature work or further testing as directed by the user.
+**Open questions for teammate:**
+- None.
+**Blockers:**
+- None.
+
+---
+
 ### 2026-09-11 — Session 12 (Extended Robustness Test)
 **Goal for this session:** Extended clear/blur robustness comparison for dlib vs InsightFace across additional students (Ansh Tomar, Rohan, Akhil Sharma, Hrisabh).
 **Done:**

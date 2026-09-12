@@ -151,6 +151,10 @@
 
 
 
+- **Passed actor_user_id to dispute resolution audit logs (2026-09-12).**
+  - **Bug & Root Cause:** The `resolve_dispute` endpoint in `main.py` was parsing the authenticated user correctly but failed to pass the user ID down to the `resolve_dispute()` service function in `disputes.py`. The service function itself lacked the `actor_user_id` parameter and inserted `audit_logs` records without it, violating the spec requirement that every human decision is recorded with the acting user's ID.
+  - **Fix Applied:** Updated the `resolve_dispute` function signature in `disputes.py` to require `actor_user_id` and included it in the `audit_logs` inserts. Updated the `resolve_dispute_endpoint` in `main.py` to extract `current_user["user_id"]` from the dependency and pass it down.
+  - **Verification:** Ran an end-to-end integration test creating and resolving a dispute using an authenticated admin account (`admin@test.local`, ID: `38745115-3314-4032-8488-db196a71f966`). Verified via external query script that the resulting `audit_logs` entries correctly recorded `actor_user_id = '38745115-3314-4032-8488-db196a71f966'`. Test data was subsequently cleaned up to leave a pristine state.
 - **InsightFace placeholder threshold calibration (2026-09-12).**
   - **Decision:** Keep match_threshold=0.5 and low_confidence_threshold=0.6 as-is (unchanged).
   - **Dataset:** 18 genuine positive matches (combination of static clear/blur test photos and live RTSP session observations) and 2 genuine imposter comparisons.

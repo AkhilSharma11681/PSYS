@@ -180,7 +180,7 @@ def resolve_dispute_endpoint(request: Request, dispute_id: str, body: ResolveDis
     require_same_institution(current_user, dispute.data[0]["institution_id"])
 
     try:
-        result = resolve_dispute(dispute_id, body.status, body.resolved_status_for_attendance)
+        result = resolve_dispute(dispute_id, body.status, body.resolved_status_for_attendance, actor_user_id=current_user["user_id"])
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return result
