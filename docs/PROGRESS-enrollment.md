@@ -186,7 +186,7 @@ with"** field first — that's the actual to-do list, not a summary to skim.
 **Next session should start with:**
 - Flip one test session's `recognition_model` to 'insightface' run a live test, then use real results to validate/tune the placeholder thresholds.
 **Open questions for teammate:**
-- Memory files (`.gitignore` item) still flagged for Akhil to confirm.
+- None.
 **Blockers:**
 - None.
 
@@ -224,7 +224,6 @@ with"** field first — that's the actual to-do list, not a summary to skim.
 - Spot-check `resolveReviewItem()` against a real `uncertain`/`camera_issue` record once one exists.
 - Consider other ambiguous/unverified items (check-in CSV import, student dispute filing, permitted-exit UI) if time allows.
 **Open questions for teammate:**
-- Memory files (`CLAUDE.md`, `docs/ARCHITECTURE.md`, `docs/DECISIONS.md`, `docs/PROGRESS*.md`, `OPERATIONS.md`) gitignore item still flagged for Akhil to confirm.
 - Note that `ajaytomar` (`332487b0...`) still has cross-referenced `attendance_observations` and should not be deleted without checking with Akhil since it's used in shared-table test data.
 **Blockers:**
 - None.
