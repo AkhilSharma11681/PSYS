@@ -31,6 +31,29 @@ with"** field first — that's the actual to-do list, not a summary to skim.
 
 ---
 
+### 2026-09-12 — Session 14
+**Goal for this session:** Investigate and verify permitted-exit feature and document findings honestly.
+**Done:**
+- Confirmed permitted-exit feature is fully built across the entire stack (`/sessions/[id]` UI, `markPermittedExit()` server action, `session_exceptions` table, `gap_check.py` excusal calculation, and `orchestrator.py` finalization).
+- Confirmed `markPermittedExit()` works via its real server action code path (successfully created a `session_exceptions` row under authenticated admin session).
+- Confirmed real-time exit design (`exit_at = now()`) matches UI without backdating (intentional design, not a bug).
+- Documented permitted-exit feature status as **partially verified** in `docs/DECISIONS.md`.
+- Fully cleaned up all temporary test artifacts and test directories (`test-e2e-permitted-exit/`, `test-setup/`), confirming 0 stray database rows and a clean working tree.
+**Files changed:**
+- `docs/DECISIONS.md`
+- `docs/PROGRESS-enrollment.md`
+**Left / not done:**
+- End-to-end mathematical excusal verification in `gap_check.py` resulting in `final_attendance` status update and `exception_applied = true` remains unconfirmed (blocked by synthetic test RLS issues on `attendance_observations` using service-role key; see `docs/DECISIONS.md`).
+**Next session should start with:**
+- Perform end-to-end excusal verification for permitted exits via a real live camera session or after investigating service-role RLS on `attendance_observations`, or proceed with student dispute filing UI as directed by supervisor.
+**Open questions for teammate:**
+- Unexpected RLS policy violation when inserting into `attendance_observations` with service-role key (service-role should normally bypass RLS).
+- Memory files (`.gitignore` item) still flagged for Akhil to confirm.
+**Blockers:**
+- None.
+
+---
+
 ### 2026-09-12 — Session 13
 **Goal for this session:** Implement automatic timestamp-to-session matching for check-in CSV import and verify end-to-end.
 **Done:**
@@ -185,6 +208,7 @@ with"** field first — that's the actual to-do list, not a summary to skim.
 
 - **2026-09-08 Verification Note:** Migration 0031's `attendance_config` INSERT policy was verified live on remote via direct `pg_policies` query on 2026-09-08 — confirmed working, no further action needed.
 - **2026-09-10 InsightFace Enrollment Note:** Enrollment flow updated to generate dual embeddings (dlib 128-D `face_embedding` and InsightFace 512-D `face_embedding_v2`) on `student_biometrics` for all new enrollments. UI updated on student detail page to display InsightFace embedding status badge per enrollment photo.
+- **2026-09-12 Permitted-Exit Status Note:** Permitted-exit feature is partially verified (full stack implementation and server action confirmed; end-to-end mathematical excusal verification via finalization is pending live session validation — see `docs/DECISIONS.md`).
 
 
 ---
