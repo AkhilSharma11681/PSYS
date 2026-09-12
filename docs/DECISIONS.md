@@ -166,3 +166,4 @@
   - **Usage Status:** Confirmed actively used by the Live Monitor feature — called by `apps/web/app/sessions/[id]/live/page.tsx` (initial SSR load) and `apps/web/app/sessions/[id]/live/LiveSessionDashboard.tsx` (polling refreshes and manual capture trigger). Neither function is orphaned.
   - **Process Note:** New functionality must be documented in `DECISIONS.md` and `PROGRESS-enrollment.md` at the time of introduction rather than discovered retroactively during post-commit review.
 
+- **Enforce two-branch workflow (feature/enrollment and feature/camera-service) (2026-09-12).** Direct commits to main are no longer permitted for feature work. All feature work must happen on the dedicated owner branches (`feature/enrollment` and `feature/camera-service`). Rationale: Avoids merge conflicts between the two branch owners and reinstates the originally intended workflow that had drifted in practice.
