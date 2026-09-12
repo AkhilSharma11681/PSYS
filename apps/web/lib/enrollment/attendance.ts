@@ -107,12 +107,16 @@ export async function resolveReviewItem(
   const user = await getCurrentUser()
   const supabase = await createClient()
 
-  const { error: updateError } = await supabase
+  const { data: updatedRows, error: updateError } = await supabase
     .from('final_attendance')
     .update({ status: newStatus })
     .eq('id', finalAttendanceId)
+    .select('id')
 
   if (updateError) throw new Error(`Failed to update attendance: ${updateError.message}`)
+  if (!updatedRows || updatedRows.length === 0) {
+    throw new Error(`Unauthorized or record not found: no rows were updated`)
+  }
 
   // Audit log — every human decision is recorded (spec requirement)
   await supabase.from('audit_logs').insert({
