@@ -1,7 +1,6 @@
 import os
 import sys
 import numpy as np
-import cv2
 import csv
 from PIL import Image
 
@@ -17,44 +16,64 @@ test_images_dir = "/Users/anshtomar/Desktop/PSYS/test-images"
 results_csv = "/Users/anshtomar/Desktop/PSYS/services/camera-service/eval_results.csv"
 
 # 2. Iterate and group images
-subjects = {}
-for filename in os.listdir(test_images_dir):
+group_identities = ['naveen', 'akhil', 'aditya raj', 'krish garg', 'abhishek']
+
+subject_embeddings = [] # List of {"subject": subject, "embedding": embedding, "source": source}
+
+print(f"Processing images in {test_images_dir}...")
+for filename in sorted(os.listdir(test_images_dir)):
     if filename in [".DS_Store", "__pycache__"] or not filename.lower().endswith(('.jpeg', '.jpg', '.png')):
         continue
 
-    # Subject grouping: filename prefix
-    name_part = os.path.splitext(filename)[0]
-    subject = name_part.split('_')[0]
+    filepath = os.path.join(test_images_dir, filename)
+    try:
+        img = Image.open(filepath).convert("RGB")
+        frame = np.array(img)
 
-    if subject not in subjects:
-        subjects[subject] = []
-    subjects[subject].append(os.path.join(test_images_dir, filename))
-
-# 3. Process images and compute embeddings
-subject_embeddings = [] # List of (subject, embedding)
-
-print(f"Processing {len(subjects)} subjects...")
-for subject, file_paths in subjects.items():
-    for file_path in file_paths:
-        try:
-            img = Image.open(file_path).convert("RGB")
-            frame = np.array(img)
-
-            # InsightFace expects BGR in detect, which provider handles RGB->BGR internally if needed
+        # Rule: Process WhatsApp group photos differently
+        if filename.startswith('WhatsApp'):
             faces = provider.detect(frame)
             if not faces:
-                print(f"  [Skipping] No face in {file_path}")
+                print(f"  [Skipping] No face in {filename}")
+                continue
+
+            # Sort by horizontal coordinate (left)
+            sorted_faces = sorted(faces, key=lambda f: f.left)
+
+            print(f"  [Processed Group Photo] {filename}: {len(sorted_faces)} faces found.")
+
+            for idx, (face, name) in enumerate(zip(sorted_faces, group_identities)):
+                embedding = provider.embed(frame, face)
+                subject_embeddings.append({
+                    "subject": name,
+                    "source": f"{filename} [face {idx}: {name}]",
+                    "embedding": np.array(embedding)
+                })
+        else:
+            # Rule: Single-person images keep prefix logic
+            name_part = os.path.splitext(filename)[0]
+            subject = name_part.split('_')[0].lower()
+
+            faces = provider.detect(frame)
+            if not faces:
+                print(f"  [Skipping] No face in {filename}")
                 continue
 
             # Use biggest face
             face_box = sorted(faces, key=lambda f: (f.right - f.left)*(f.bottom - f.top), reverse=True)[0]
 
             embedding = provider.embed(frame, face_box)
-            subject_embeddings.append({"subject": subject, "embedding": np.array(embedding)})
-            print(f"  [Processed] {subject}: {os.path.basename(file_path)}")
+            subject_embeddings.append({
+                "subject": subject,
+                "source": filename,
+                "embedding": np.array(embedding)
+            })
+            print(f"  [Processed] {subject}: {filename}")
 
-        except Exception as e:
-            print(f"  [Error] Processing {file_path}: {e}")
+    except Exception as e:
+        print(f"  [Error] Processing {filename}: {e}")
+
+print(f"\nTotal extracted embeddings: {len(subject_embeddings)}")
 
 # 4. Pairwise comparisons
 comparisons = []
@@ -69,12 +88,16 @@ for i in range(len(subject_embeddings)):
         s1 = subject_embeddings[i]
         s2 = subject_embeddings[j]
 
-        # Use production find_best_match logic (which calls provider.match)
-        best = find_best_match(provider, s1["embedding"], [s2["embedding"]])
-        sim = best.similarity
-        dist = best.distance
+        # Rule: Krish Garg exclusion for genuine comparisons
+        if s1["subject"] == "krish garg" and s2["subject"] == "krish garg":
+            continue
 
-        is_match = (s1["subject"] == s2["subject"])
+        best = find_best_match(provider, s1["embedding"], [s2["embedding"]])
+        dist = best.distance
+        sim = best.similarity
+
+        is_match = (s1["subject"] == s2["subject"] and s1["subject"] != "krish garg")
+
         matched = (dist <= match_threshold)
 
         comparison = {
@@ -89,7 +112,8 @@ for i in range(len(subject_embeddings)):
 
         if is_match:
             genuine_comparisons.append(matched)
-        else:
+        elif s1["subject"] != s2["subject"]:
+            # Imposter: strictly different subjects (any subject vs any other, including krish garg)
             imposter_comparisons.append(matched)
 
 # 5. Output results
