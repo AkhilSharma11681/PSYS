@@ -1,5 +1,6 @@
 import os
 import sys
+from unittest.mock import MagicMock, patch
 
 # Ensure dummy env vars exist if not present so importing worker does not fail
 os.environ.setdefault("SUPABASE_URL", "https://example.supabase.co")
@@ -8,7 +9,8 @@ os.environ.setdefault("SUPABASE_SERVICE_ROLE_KEY", "dummy-key")
 # Add services/enrollment-worker to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from app.worker import is_duplicate_face
+import app.worker as worker
+from app.worker import is_duplicate_face, fetch_other_biometrics
 
 
 def run_tests():
@@ -29,7 +31,7 @@ def run_tests():
     threshold = 0.40
 
     tests_passed = 0
-    total_tests = 5
+    total_tests = 9
 
     # Test 1: Distance below threshold -> duplicate flagged
     other_biometrics = [
@@ -87,7 +89,6 @@ def run_tests():
     tests_passed += 1
 
     # Test 6: Mismatched embedding dimensions are skipped gracefully
-    total_tests = 7
     mismatched_embedding = [0.0] * 512  # different length
     other_biometrics = [
         {"student_id": "student-mismatch", "face_embedding": mismatched_embedding}
@@ -110,6 +111,74 @@ def run_tests():
     assert collided_id == "student-multi", f"Expected collided_id to be 'student-multi', got {collided_id}"
     assert abs(dist - 0.25) < 1e-6, f"Expected distance 0.25, got {dist}"
     print(f"✓ Case 7 passed: Collision with demoted (non-primary) embedding of a student detected (collided with {collided_id} at distance {dist:.4f})")
+    tests_passed += 1
+
+    # Test 8: Multi-page pagination across 3 batches (1000 + 1000 + 250 = 2250 rows)
+    ranges_called_multi = []
+
+    def mock_range_multi(start, end):
+        ranges_called_multi.append((start, end))
+        builder = MagicMock()
+        if start == 0:
+            data = [{"student_id": f"student-{i}", "face_embedding": [0.0] * 128} for i in range(1000)]
+        elif start == 1000:
+            data = [{"student_id": f"student-{i}", "face_embedding": [0.0] * 128} for i in range(1000, 2000)]
+        elif start == 2000:
+            data = [{"student_id": f"student-{i}", "face_embedding": [0.0] * 128} for i in range(2000, 2250)]
+        else:
+            data = []
+
+        exec_res = MagicMock()
+        exec_res.data = data
+        builder.execute.return_value = exec_res
+        return builder
+
+    mock_builder_multi = MagicMock()
+    mock_builder_multi.select.return_value = mock_builder_multi
+    mock_builder_multi.eq.return_value = mock_builder_multi
+    mock_builder_multi.neq.return_value = mock_builder_multi
+    mock_builder_multi.range.side_effect = mock_range_multi
+
+    mock_supabase_multi = MagicMock()
+    mock_supabase_multi.table.return_value = mock_builder_multi
+
+    with patch.object(worker, "supabase", mock_supabase_multi):
+        rows_multi = fetch_other_biometrics("inst-123", "target-student", batch_size=1000)
+
+    assert len(rows_multi) == 2250, f"Expected 2250 rows, got {len(rows_multi)}"
+    assert len(ranges_called_multi) == 3, f"Expected 3 range calls, got {len(ranges_called_multi)}"
+    assert ranges_called_multi == [(0, 999), (1000, 1999), (2000, 2999)], f"Unexpected range calls: {ranges_called_multi}"
+    print(f"✓ Case 8 passed: Multi-page pagination fetched 2250 rows across 3 calls with expected ranges {ranges_called_multi}")
+    tests_passed += 1
+
+    # Test 9: Single-page edge case with fewer than batch_size rows (5 rows -> 1 call)
+    ranges_called_single = []
+
+    def mock_range_single(start, end):
+        ranges_called_single.append((start, end))
+        builder = MagicMock()
+        data = [{"student_id": f"student-single-{i}", "face_embedding": [0.0] * 128} for i in range(5)]
+        exec_res = MagicMock()
+        exec_res.data = data
+        builder.execute.return_value = exec_res
+        return builder
+
+    mock_builder_single = MagicMock()
+    mock_builder_single.select.return_value = mock_builder_single
+    mock_builder_single.eq.return_value = mock_builder_single
+    mock_builder_single.neq.return_value = mock_builder_single
+    mock_builder_single.range.side_effect = mock_range_single
+
+    mock_supabase_single = MagicMock()
+    mock_supabase_single.table.return_value = mock_builder_single
+
+    with patch.object(worker, "supabase", mock_supabase_single):
+        rows_single = fetch_other_biometrics("inst-123", "target-student", batch_size=1000)
+
+    assert len(rows_single) == 5, f"Expected 5 rows, got {len(rows_single)}"
+    assert len(ranges_called_single) == 1, f"Expected 1 range call, got {len(ranges_called_single)}"
+    assert ranges_called_single == [(0, 999)], f"Unexpected range calls: {ranges_called_single}"
+    print(f"✓ Case 9 passed: Single-page fetch returned 5 rows in exactly 1 call with range {ranges_called_single}")
     tests_passed += 1
 
     print("==================================================================")

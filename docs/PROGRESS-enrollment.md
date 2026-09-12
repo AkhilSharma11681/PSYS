@@ -31,6 +31,31 @@ with"** field first — that's the actual to-do list, not a summary to skim.
 
 ---
 
+### 2026-09-12 — Session 15
+**Goal for this session:** Restore dimension-mismatch guard in enrollment-worker duplicate face check, verify test coverage including pagination, document, and clean up stale notes.
+**Done:**
+- Restored the accidentally removed embedding dimension check (`len(new_embedding) != len(existing_embedding)`) in `is_duplicate_face()` in `services/enrollment-worker/app/worker.py`.
+- Added 2 mocked unit test cases in `services/enrollment-worker/test_duplicate_check.py` verifying multi-page pagination (3 batches, 2250 rows) and single-page edge cases for `fetch_other_biometrics()`.
+- Verified all 9 unit tests pass in `services/enrollment-worker/test_duplicate_check.py` (7 duplicate matching cases + 2 pagination cases).
+- Corrected stale "known issue" notes regarding pagination in `docs/DECISIONS.md` and `docs/PROGRESS-enrollment.md`.
+- Documented the regression root cause, risk, fix, and verification in `docs/DECISIONS.md`.
+**Files changed:**
+- `services/enrollment-worker/app/worker.py`
+- `services/enrollment-worker/test_duplicate_check.py`
+- `docs/DECISIONS.md`
+- `docs/PROGRESS-enrollment.md`
+**Left / not done:**
+- None.
+**Next session should start with:**
+- Proceed with pending feature work or remaining unverified items (student dispute filing UI, end-to-end permitted-exit live session verification) as directed by supervisor.
+**Open questions for teammate:**
+- Unexpected RLS policy violation when inserting into `attendance_observations` with service-role key.
+- Memory files (`.gitignore` item) still flagged for Akhil to confirm.
+**Blockers:**
+- None.
+
+---
+
 ### 2026-09-12 — Session 14
 **Goal for this session:** Investigate and verify permitted-exit feature and document findings honestly.
 **Done:**
@@ -193,7 +218,7 @@ with"** field first — that's the actual to-do list, not a summary to skim.
 - `apps/web/app/students/[id]/DeleteStudentButton.tsx`
 **Left / not done:**
 - Review queue resolution (`resolveReviewItem()`) not yet verified against live UI due to no existing `uncertain`/`camera_issue` rows in `final_attendance`.
-- Cross-student duplicate-face query in `worker.py` lacks pagination for large biometrics datasets (>1000 rows).
+- Cross-student duplicate-face query in `worker.py` pagination verified implemented and tested with mock coverage on 2026-09-12 (Session 15); embedding dimension mismatch guard restored.
 - Photo cleanup after dismissing duplicate-flagged jobs.
 **Next session should start with:**
 - Spot-check `resolveReviewItem()` against a real `uncertain`/`camera_issue` record once one exists.

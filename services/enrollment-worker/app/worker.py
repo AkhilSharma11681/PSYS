@@ -97,6 +97,10 @@ def is_duplicate_face(
         existing_embedding = _parse_embedding(row.get("face_embedding"))
         if existing_embedding is None:
             continue
+        if len(new_embedding) != len(existing_embedding):
+            print(f"[duplicate check warning] skipped student {row.get('student_id')}: "
+                  f"embedding dimension mismatch ({len(new_embedding)} vs {len(existing_embedding)})")
+            continue
         dist = math.dist(new_embedding, existing_embedding)
         if dist <= threshold:
             return True, row.get("student_id"), dist
