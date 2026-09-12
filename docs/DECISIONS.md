@@ -166,3 +166,9 @@
   - **Usage Status:** Confirmed actively used by the Live Monitor feature — called by `apps/web/app/sessions/[id]/live/page.tsx` (initial SSR load) and `apps/web/app/sessions/[id]/live/LiveSessionDashboard.tsx` (polling refreshes and manual capture trigger). Neither function is orphaned.
   - **Process Note:** New functionality must be documented in `DECISIONS.md` and `PROGRESS-enrollment.md` at the time of introduction rather than discovered retroactively during post-commit review.
 
+- **Automatic timestamp-to-session matching for check-in CSV import (2026-09-12).**
+  - **Gap:** `external_checkin_events.session_id` was previously never populated during import, meaning check-ins could not effectively influence `derive_session_roster()` or attendance.
+  - **Decision:** Implemented automatic matching during import using a +/-15 minute buffer window around `scheduled_start`/`scheduled_end`.
+  - **Ambiguity Handling:** If a check-in timestamp falls within multiple overlapping session windows, `session_id` is left NULL rather than guessing, and a new "ambiguous" counter surfaces this edge-case count to the importing admin.
+  - **Verification:** Ran a real 4-case end-to-end test (single match, no match, unresolved student, ambiguous overlap) which all behaved exactly as designed, confirmed via direct database query.
+  - **Open Limitation:** The 15-minute buffer window is a reasonable starting default, but is not empirically tuned — it may need adjustment based on real usage patterns.

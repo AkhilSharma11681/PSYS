@@ -31,6 +31,31 @@ with"** field first — that's the actual to-do list, not a summary to skim.
 
 ---
 
+### 2026-09-12 — Session 13
+**Goal for this session:** Implement automatic timestamp-to-session matching for check-in CSV import and verify end-to-end.
+**Done:**
+- Added automatic timestamp-to-session matching to `importCheckins()` in `apps/web/lib/enrollment/checkins.ts`, querying `class_sessions` within a +/-15 minute window around `scheduled_start`/`scheduled_end`.
+- Handled ambiguous overlapping sessions by keeping `session_id = NULL` and incrementing an `ambiguous` counter.
+- Updated `CheckinUploadForm.tsx` to surface the `ambiguous` count alongside resolved, unresolved, and skipped counts.
+- Executed authenticated end-to-end self-test against real database entities covering all 4 cases (single match, no match, unresolved student, ambiguous overlap), verified database rows in `external_checkin_events`, and verified returned metrics.
+- Cleaned up all test check-in records and confirmed 0 rows remain.
+- Documented decision in `docs/DECISIONS.md`.
+**Files changed:**
+- `apps/web/lib/enrollment/checkins.ts`
+- `apps/web/lib/enrollment/CheckinUploadForm.tsx`
+- `docs/DECISIONS.md`
+- `docs/PROGRESS-enrollment.md`
+**Left / not done:**
+- None.
+**Next session should start with:**
+- Proceed with pending feature work or remaining unverified items (student dispute filing UI, permitted-exit UI) as directed by supervisor.
+**Open questions for teammate:**
+- Memory files (`.gitignore` item) still flagged for Akhil to confirm.
+**Blockers:**
+- None.
+
+---
+
 ### 2026-09-12 — Session 12
 **Goal for this session:** Spot-check `resolveReviewItem()` against real finalized session data and verify RLS authorization behavior.
 **Done:**

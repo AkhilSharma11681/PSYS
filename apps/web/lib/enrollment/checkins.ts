@@ -46,6 +46,7 @@ export async function importCheckins(formData: FormData) {
   let resolved = 0
   let unresolved = 0
   let skipped = 0
+  let ambiguous = 0
 
   for (const row of rows) {
     const externalRef = row['student_ref']
@@ -63,11 +64,39 @@ export async function importCheckins(formData: FormData) {
       .eq('roll_number', externalRef)
       .maybeSingle()
 
+    let sessionId: string | null = null
+    let isAmbiguous = false
+
+    const checkinDate = new Date(checkedInAt)
+    if (!isNaN(checkinDate.getTime())) {
+      const windowStart = new Date(checkinDate.getTime() - 15 * 60 * 1000).toISOString()
+      const windowEnd = new Date(checkinDate.getTime() + 15 * 60 * 1000).toISOString()
+
+      const { data: sessions, error: sessionError } = await supabase
+        .from('class_sessions')
+        .select('id')
+        .eq('institution_id', user.institution_id)
+        .lte('scheduled_start', windowEnd)
+        .gte('scheduled_end', windowStart)
+
+      if (sessionError) {
+        throw new Error(`Failed to query sessions for check-in: ${sessionError.message}`)
+      }
+
+      if (sessions && sessions.length === 1) {
+        sessionId = sessions[0].id
+      } else if (sessions && sessions.length > 1) {
+        sessionId = null
+        isAmbiguous = true
+      }
+    }
+
     const { error } = await supabase.from('external_checkin_events').insert({
       institution_id: user.institution_id,
       source: 'kent',
       external_student_ref: externalRef,
       student_id: student?.id ?? null,
+      session_id: sessionId,
       checked_in_at: checkedInAt,
       raw_payload: row,
     })
@@ -82,6 +111,10 @@ export async function importCheckins(formData: FormData) {
       throw new Error(`Failed to insert check-in row: ${error.message}`)
     }
 
+    if (isAmbiguous) {
+      ambiguous++
+    }
+
     if (student?.id) {
       resolved++
     } else {
@@ -90,5 +123,5 @@ export async function importCheckins(formData: FormData) {
   }
 
   revalidatePath('/checkins')
-  return { resolved, unresolved, skipped }
+  return { resolved, unresolved, skipped, ambiguous }
 }

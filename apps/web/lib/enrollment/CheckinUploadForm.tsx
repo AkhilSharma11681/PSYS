@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { importCheckins } from '@/lib/enrollment/checkins'
 
 export default function CheckinUploadForm() {
-  const [result, setResult] = useState<{ resolved: number; unresolved: number; skipped: number } | null>(null)
+  const [result, setResult] = useState<{ resolved: number; unresolved: number; skipped: number; ambiguous: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
 
@@ -37,7 +37,7 @@ export default function CheckinUploadForm() {
 
       {result && (
         <p className="text-sm text-gray-600">
-          Imported: {result.resolved} resolved, {result.unresolved} unresolved (no matching roll number), {result.skipped} skipped (duplicate or missing fields)
+          Imported: {result.resolved} resolved, {result.unresolved} unresolved (no matching roll number), {result.skipped} skipped, {result.ambiguous} ambiguous (overlapping sessions)
         </p>
       )}
       {error && <p className="text-sm text-red-500">{error}</p>}
