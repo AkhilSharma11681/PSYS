@@ -11,3 +11,6 @@ python-multipart
 Pillow
 slowapi
 PyJWT[crypto]
+insightface==2.0
+onnxruntime==1.29.0
+

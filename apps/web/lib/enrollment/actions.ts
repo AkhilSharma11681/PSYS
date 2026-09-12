@@ -171,3 +171,246 @@ export async function confirmConsent(studentId: string) {
 
   revalidatePath(`/students/${studentId}`)
 }
+
+export async function dismissFailedEnrollmentJob(jobId: string, studentId: string) {
+  const user = await getCurrentUser()
+  if (!user || (user.role !== 'admin' && user.role !== 'teacher')) {
+    throw new Error('Unauthorized: only admins and teachers can dismiss failed jobs')
+  }
+
+  const supabase = await createClient()
+
+  // First fetch the job to get its storage path and verify state
+  const { data: job, error: fetchError } = await supabase
+    .from('enrollment_jobs')
+    .select('storage_path, status')
+    .eq('id', jobId)
+    .single()
+
+  if (fetchError || !job) {
+    throw new Error('Failed to fetch job details')
+  }
+
+  if (job.status !== 'failed') {
+    throw new Error('Only failed jobs can be dismissed')
+  }
+
+  // Delete the source file from Storage to prevent orphans
+  if (job.storage_path) {
+    const { error: storageError } = await supabase.storage
+      .from('enrollment-photos')
+      .remove([job.storage_path])
+
+    if (storageError) {
+      console.error(`Failed to delete storage file for job ${jobId}: ${storageError.message}`)
+      // Proceeding with job row deletion anyway so the UI doesn't get permanently stuck
+    }
+  }
+
+  // Delete the job record from database
+  const { error: deleteError } = await supabase
+    .from('enrollment_jobs')
+    .delete()
+    .eq('id', jobId)
+
+  if (deleteError) {
+    throw new Error(`Failed to delete job record: ${deleteError.message}`)
+  }
+
+  revalidatePath(`/students/${studentId}`)
+}
+
+export async function deleteStudent(studentId: string) {
+  const user = await getCurrentUser()
+  if (!user || user.role !== 'admin') {
+    throw new Error('Unauthorized: only admins can delete students')
+  }
+
+  checkRateLimit(`deleteStudent:${user.institution_id}`, 10, 60_000)
+
+  const supabase = await createClient()
+
+  // 1. Fetch student info
+  const { data: student, error: fetchError } = await supabase
+    .from('students')
+    .select('institution_id, full_name, roll_number')
+    .eq('id', studentId)
+    .single()
+
+  if (fetchError || !student) {
+    throw new Error(`Failed to fetch student details: ${fetchError?.message || 'Not found'}`)
+  }
+
+  // 2. Check for history
+  const [
+    { count: enrollmentCount },
+    { count: obsCount },
+    { count: finalAttCount },
+    { count: disputesCount },
+    { count: excCount },
+    { count: extCount }
+  ] = await Promise.all([
+    supabase.from('class_enrollments').select('id', { count: 'exact', head: true }).eq('student_id', studentId),
+    supabase.from('attendance_observations').select('id', { count: 'exact', head: true }).eq('student_id', studentId),
+    supabase.from('final_attendance').select('id', { count: 'exact', head: true }).eq('student_id', studentId),
+    supabase.from('disputes').select('id', { count: 'exact', head: true }).eq('student_id', studentId),
+    supabase.from('session_exceptions').select('id', { count: 'exact', head: true }).eq('student_id', studentId),
+    supabase.from('external_checkin_events').select('id', { count: 'exact', head: true }).eq('student_id', studentId),
+  ])
+
+  const hasHistory = (
+    (enrollmentCount || 0) > 0 ||
+    (obsCount || 0) > 0 ||
+    (finalAttCount || 0) > 0 ||
+    (disputesCount || 0) > 0 ||
+    (excCount || 0) > 0 ||
+    (extCount || 0) > 0
+  )
+
+  let mode: 'hard' | 'soft' = 'hard'
+
+  if (hasHistory) {
+    // 3B. Soft Delete
+    mode = 'soft'
+    const { error: updateError } = await supabase
+      .from('students')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', studentId)
+      
+    if (updateError) throw new Error(`Failed to soft-delete student: ${updateError.message}`)
+  } else {
+    // 3A. Hard Delete
+    mode = 'hard'
+    
+    const { error: biometricsError } = await supabase
+      .from('student_biometrics')
+      .delete()
+      .eq('student_id', studentId)
+      
+    if (biometricsError) throw new Error(`Failed to delete biometrics: ${biometricsError.message}`)
+    
+    // Delete enrollment_jobs and associated storage photos
+    const { data: jobs } = await supabase
+      .from('enrollment_jobs')
+      .select('id, storage_path')
+      .eq('student_id', studentId)
+      
+    if (jobs && jobs.length > 0) {
+      const pathsToDelete = jobs.map(j => j.storage_path).filter(Boolean) as string[]
+      if (pathsToDelete.length > 0) {
+        await supabase.storage.from('enrollment-photos').remove(pathsToDelete)
+      }
+      
+      const { error: jobsError } = await supabase
+        .from('enrollment_jobs')
+        .delete()
+        .eq('student_id', studentId)
+        
+      if (jobsError) throw new Error(`Failed to delete enrollment jobs: ${jobsError.message}`)
+    }
+    
+    // Hard delete the student using the new admin-scoped DELETE policy
+    const { error: deleteError } = await supabase
+      .from('students')
+      .delete()
+      .eq('id', studentId)
+      
+    if (deleteError) throw new Error(`Failed to delete student row: ${deleteError.message}`)
+  }
+
+  // Log to audit_logs
+  await supabase.from('audit_logs').insert({
+    institution_id: student.institution_id,
+    actor_user_id: user.id,
+    action: 'student_deleted',
+    entity_type: 'student',
+    entity_id: studentId,
+    metadata: {
+      full_name: student.full_name,
+      roll_number: student.roll_number,
+      mode
+    }
+  })
+
+  revalidatePath('/students')
+  return { mode }
+}
+
+export async function clearStudentBiometrics(studentId: string) {
+  const user = await getCurrentUser()
+  if (!user || user.role !== 'admin') {
+    throw new Error('Unauthorized: only admins can clear biometrics')
+  }
+
+  const supabase = await createClient()
+
+  // 1. Fetch student info
+  const { data: student, error: fetchError } = await supabase
+    .from('students')
+    .select('institution_id, full_name, roll_number')
+    .eq('id', studentId)
+    .single()
+
+  if (fetchError || !student) {
+    throw new Error(`Failed to fetch student details: ${fetchError?.message || 'Not found'}`)
+  }
+
+  checkRateLimit(`clearStudentBiometrics:${student.institution_id}`, 5, 60_000)
+
+  // 2. Fetch biometric IDs to delete
+  const { data: biometrics, error: fetchBioError } = await supabase
+    .from('student_biometrics')
+    .select('id')
+    .eq('student_id', studentId)
+
+  if (fetchBioError) {
+    throw new Error(`Failed to fetch biometrics: ${fetchBioError.message}`)
+  }
+
+  const bioIds = biometrics.map(b => b.id)
+  const deletedCount = bioIds.length
+
+  if (deletedCount === 0) {
+    return { count: 0 }
+  }
+
+  // 3. Delete biometrics
+  const { error: deleteBioError } = await supabase
+    .from('student_biometrics')
+    .delete()
+    .in('id', bioIds)
+
+  if (deleteBioError) {
+    throw new Error(`Failed to delete biometrics: ${deleteBioError.message}`)
+  }
+
+  // 4. Reset photo count
+  const { error: updateError } = await supabase
+    .from('students')
+    .update({ enrollment_photo_count: 0 })
+    .eq('id', studentId)
+
+  if (updateError) {
+    throw new Error(`Failed to reset enrollment photo count: ${updateError.message}`)
+  }
+
+  // 5. Log audit trail
+  await supabase.from('audit_logs').insert({
+    institution_id: student.institution_id,
+    actor_user_id: user.id,
+    action: 'biometrics_cleared',
+    entity_type: 'student',
+    entity_id: studentId,
+    metadata: {
+      full_name: student.full_name,
+      roll_number: student.roll_number,
+      biometrics_deleted_count: deletedCount
+    }
+  })
+
+  // 6. Revalidate
+  revalidatePath(`/students/${studentId}`)
+  revalidatePath('/students/archived')
+
+  return { count: deletedCount }
+}

@@ -14,40 +14,49 @@ export default async function CheckinsPage() {
     .limit(50)
 
   return (
-    <div className="p-8 max-w-3xl mx-auto">
-      <h1 className="text-2xl font-semibold mb-2">External Check-in Sync</h1>
-      <p className="text-sm text-gray-500 mb-6">
-        Import a CSV with columns: <code>student_ref,checked_in_at</code>. Rows are matched
-        against student roll numbers.
-      </p>
+    <div className="page-shell">
+      <div className="page-inner max-w-4xl">
+        <p className="page-eyebrow">Integrations</p>
+        <h1 className="page-title">External Check-in Sync</h1>
+        <p className="page-subtitle">
+          Import a CSV with columns: <code>student_ref,checked_in_at</code>. Rows are matched
+          against student roll numbers for roster derivation.
+        </p>
 
-      <CheckinUploadForm />
+        <div className="card p-6 mb-8">
+          <CheckinUploadForm />
+        </div>
 
-      <h2 className="font-medium mt-8 mb-2">Recent Events (last 50)</h2>
-      {events && events.length > 0 ? (
-        <table className="w-full text-sm border-collapse">
-          <thead>
-            <tr className="text-left border-b">
-              <th className="py-2 pr-4">Student Ref</th>
-              <th className="py-2 pr-4">Checked In At</th>
-              <th className="py-2">Resolved?</th>
-            </tr>
-          </thead>
-          <tbody>
-            {events.map((e) => (
-              <tr key={e.id} className="border-b">
-                <td className="py-2 pr-4">{e.external_student_ref}</td>
-                <td className="py-2 pr-4">{new Date(e.checked_in_at).toLocaleString()}</td>
-                <td className="py-2">
-                  {e.student_id ? '✓' : <span className="text-amber-600">unmatched</span>}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      ) : (
-        <p className="text-sm text-gray-500">No check-in events synced yet.</p>
-      )}
+        <h2 className="text-base font-semibold mb-3 text-slate-900">Recent Events (last 50)</h2>
+        {events && events.length > 0 ? (
+          <div className="card overflow-hidden">
+            <div className="ledger">
+              <div className="ledger-head" style={{ gridTemplateColumns: '2fr 2fr 1fr' }}>
+                <div>Student Ref</div>
+                <div>Checked In At</div>
+                <div>Resolved</div>
+              </div>
+              {events.map((e) => (
+                <div key={e.id} className="ledger-row" style={{ gridTemplateColumns: '2fr 2fr 1fr' }}>
+                  <div className="text-sm font-mono font-medium">{e.external_student_ref}</div>
+                  <div className="text-sm text-slate-500 font-sans tabular-nums">
+                    {new Date(e.checked_in_at).toLocaleString()}
+                  </div>
+                  <div>
+                    {e.student_id ? (
+                      <span className="badge badge-good">✓ Resolved</span>
+                    ) : (
+                      <span className="badge badge-warn">Unmatched</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <p className="ledger-empty">No check-in events synced yet.</p>
+        )}
+      </div>
     </div>
   )
 }

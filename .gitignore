@@ -5,3 +5,7 @@ __pycache__/
 .DS_Store
 node_modules/
 supabase/.temp/
+test_db.py
+services/camera-service/tmp/.claude/settings.local.json
+.claude/settings.local.json
+test-images/

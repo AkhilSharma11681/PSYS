@@ -1,7 +1,8 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/admin'
-import { addEnrollmentPhoto, updateStudent, confirmConsent } from '@/lib/enrollment/actions'
+import { addEnrollmentPhoto, updateStudent, confirmConsent, dismissFailedEnrollmentJob } from '@/lib/enrollment/actions'
+import DeleteStudentButton from './DeleteStudentButton'
+import ClearBiometricsButton from './ClearBiometricsButton'
 
 export default async function StudentDetailPage({
   params,
@@ -30,7 +31,7 @@ export default async function StudentDetailPage({
 
   const { data: photos } = await supabase
     .from('student_biometrics')
-    .select('id, quality_score, is_primary, created_at')
+    .select('id, quality_score, is_primary, created_at, face_embedding_v2')
     .eq('student_id', id)
     .order('created_at', { ascending: false })
 
@@ -41,12 +42,11 @@ export default async function StudentDetailPage({
     .neq('status', 'done')
     .order('created_at', { ascending: false })
 
-  const admin = createAdminClient()
   const jobPhotoUrls: Record<string, string> = {}
   if (pendingJobs) {
     for (const job of pendingJobs) {
       if (job.storage_path) {
-        const { data: signed } = await admin.storage
+        const { data: signed } = await supabase.storage
           .from('enrollment-photos')
           .createSignedUrl(job.storage_path, 300)
         if (signed?.signedUrl) {
@@ -63,7 +63,12 @@ export default async function StudentDetailPage({
   return (
     <div className="page-shell">
       <div className="page-inner">
-        <Link href="/students" className="link-accent text-xs mb-3 inline-block">← Back to Students</Link>
+        <Link
+          href={student.deleted_at ? '/students/archived' : '/students'}
+          className="link-accent text-xs mb-3 inline-block"
+        >
+          ← Back to {student.deleted_at ? 'Archived Students' : 'Students'}
+        </Link>
         <h1 className="page-title">{student.full_name}</h1>
         <p className="page-subtitle">Roll: {student.roll_number || '—'} &middot; {student.status}</p>
 
@@ -148,6 +153,11 @@ export default async function StudentDetailPage({
                       {p.is_primary && (
                         <span className="badge badge-good ml-2" style={{ fontSize: '0.65rem' }}>primary</span>
                       )}
+                      {p.face_embedding_v2 ? (
+                        <span className="badge badge-good ml-2" style={{ fontSize: '0.65rem' }}>InsightFace ✓</span>
+                      ) : (
+                        <span className="badge badge-neutral ml-2" style={{ fontSize: '0.65rem', color: 'var(--muted)' }}>InsightFace: pending</span>
+                      )}
                     </div>
                     {(p.quality_score ?? 1) < 0.5 && (
                       <span className="text-xs" style={{ color: 'var(--accent-warn)' }}>
@@ -172,24 +182,33 @@ export default async function StudentDetailPage({
             <h2 className="text-sm font-semibold mb-3">Pending Jobs</h2>
             <div className="card">
               {pendingJobs.map((j) => (
-                <div key={j.id} className="py-3 border-b last:border-0" style={{ borderColor: 'var(--border)' }}>
-                  <p className="text-sm" style={{ color: 'var(--accent-warn)' }}>
-                    {j.status === 'failed' ? `Failed: ${j.error}` : `${j.status}…`}
-                  </p>
-                  {jobPhotoUrls[j.id] && (
-                    <a
-                      href={jobPhotoUrls[j.id]}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-block mt-2"
-                    >
-                      <img
-                        src={jobPhotoUrls[j.id]}
-                        alt="Uploaded photo"
-                        className="h-24 rounded border"
-                        style={{ borderColor: 'var(--border)' }}
-                      />
-                    </a>
+                <div key={j.id} className="py-3 border-b last:border-0 flex items-start justify-between gap-4" style={{ borderColor: 'var(--border)' }}>
+                  <div>
+                    <p className="text-sm" style={{ color: 'var(--accent-warn)' }}>
+                      {j.status === 'failed' ? `Failed: ${j.error}` : `${j.status}…`}
+                    </p>
+                    {jobPhotoUrls[j.id] && (
+                      <a
+                        href={jobPhotoUrls[j.id]}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-block mt-2"
+                      >
+                        <img
+                          src={jobPhotoUrls[j.id]}
+                          alt="Uploaded photo"
+                          className="h-24 rounded border"
+                          style={{ borderColor: 'var(--border)' }}
+                        />
+                      </a>
+                    )}
+                  </div>
+                  {j.status === 'failed' && (
+                    <form action={dismissFailedEnrollmentJob.bind(null, j.id, id)}>
+                      <button type="submit" className="btn-secondary-sm text-xs">
+                        Dismiss
+                      </button>
+                    </form>
                   )}
                 </div>
               ))}
@@ -198,13 +217,40 @@ export default async function StudentDetailPage({
         )}
 
         {/* Add Photo */}
-        <section>
+        <section className="mb-8">
           <h2 className="text-sm font-semibold mb-3">Add Photo</h2>
           <div className="card">
             <form action={addPhoto} className="flex items-center gap-3">
               <input type="file" name="photo" accept="image/*" required className="text-sm" />
               <button type="submit" className="btn-primary">Upload</button>
             </form>
+          </div>
+        </section>
+
+        {/* Danger Zone */}
+        <section>
+          <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--accent-bad)' }}>Danger Zone</h2>
+          <div className="card space-y-4">
+            <div className={`flex items-center justify-between ${!student.deleted_at ? 'pb-4 border-b' : ''}`} style={{ borderColor: 'var(--border)' }}>
+              <div className="mr-8">
+                <p className="text-sm font-medium mb-1">Clear Face Data</p>
+                <p className="text-xs m-0" style={{ color: 'var(--muted)' }}>
+                  Remove all biometric face embeddings and reset photo count. Allows re-enrolling face data from scratch.
+                </p>
+              </div>
+              <ClearBiometricsButton studentId={student.id} studentName={student.full_name} />
+            </div>
+            {!student.deleted_at && (
+              <div className="flex items-center justify-between">
+                <div className="mr-8">
+                  <p className="text-sm font-medium mb-1">Delete Student</p>
+                  <p className="text-xs m-0" style={{ color: 'var(--muted)' }}>
+                    Permanently delete this student if they have no attendance history, or archive them if attendance records exist.
+                  </p>
+                </div>
+                <DeleteStudentButton studentId={student.id} studentName={student.full_name} />
+              </div>
+            )}
           </div>
         </section>
       </div>

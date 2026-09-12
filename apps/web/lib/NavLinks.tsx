@@ -26,7 +26,13 @@ export default function NavLinks({ role = 'admin' }: { role?: string }) {
 
   return (
     <div className="flex gap-5 items-center">
-      <span className="font-mono text-xs tracking-widest" style={{ color: 'var(--accent-good)' }}>PSYS</span>
+      <Link
+        href="/"
+        className="font-mono text-xs tracking-widest hover:opacity-80 transition-opacity"
+        style={{ color: 'var(--accent-good)' }}
+      >
+        PSYS
+      </Link>
       {visibleLinks.map((link) => {
         const active = link.href === '/' ? pathname === '/' : pathname.startsWith(link.href)
         return (

@@ -69,7 +69,7 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ id
     .order('scheduled_start', { ascending: false })
     .returns<Session[]>()
 
-  const enrolledIds = new Set(enrolled?.map((e) => e.student_id) || [])
+  const enrolledIds = new Set(enrolled?.map((e: any) => e.student_id) || [])
   const availableStudents = students?.filter((s) => !enrolledIds.has(s.id)) || []
 
   return (
@@ -84,7 +84,7 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ id
           <p className="text-sm" style={{ color: 'var(--muted)' }}>No students enrolled yet.</p>
         ) : (
           <ul className="ledger mb-6">
-            {enrolled?.map((e) => (
+            {enrolled?.map((e: any) => (
               <li key={e.student_id} className="ledger-row">
                 <span className="text-sm font-medium">{e.students?.full_name}</span>
                 <span className="text-xs" style={{ color: 'var(--muted)' }}>{e.students?.roll_number || '—'}</span>

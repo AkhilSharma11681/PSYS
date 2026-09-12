@@ -1,98 +1,6 @@
+# PSYS — Progress Log Archive
 
-This file has been split. See docs/PROGRESS-enrollment.md (feature/enrollment)
-and docs/PROGRESS-camera.md (feature/camera-service). Historical entries
-before the split remain in docs/PROGRESS_ARCHIVE.md (mixed authorship,
-kept for reference only — do not append new entries there).
-
-# PSYS — Progress Log
-
-> Update this file at the END of every Claude Code session. This is how the next session
-> gets caught up, instead of re-reading old chats. Newest entries at the top.
-
-## Entry Format
-Every session log entry below MUST follow this exact template — no free-form summaries.
-
-```
-### YYYY-MM-DD — Session N
-**Goal for this session:**
-**Done:**
--
-**Files changed:**
--
-**Left / not done:**
--
-**Next session should start with:**
--
-**Open questions for teammate:**
--
-**Blockers:**
--
-
-```
-
-At the START of a new session, read the most recent entry's **"Next session should start
-with"** field first — that's the actual to-do list, not a summary to skim.
-
-### 2026-09-09 — Session (Live Session Demo Dashboard Fixes & Config Update)
-**Goal for this session:** Diagnose and resolve schema mismatch in live session queries, apply updated attendance thresholds to remote DB, and verify type checking across Next.js app.
-**Done:**
-- Diagnosed and fixed PostgREST schema mismatch in `apps/web/lib/enrollment/attendance.ts`: replaced non-existent `confidence_score` column query with `similarity_score` on `attendance_observations`.
-- Updated `LiveSessionDashboard.tsx` to use `similarity_score` across all state bindings and rendering calculations.
-- Applied `0034_update_attendance_config_match_threshold.sql` directly to the remote Supabase database (`match_threshold = 0.45`, `low_confidence_threshold = 0.55`) across all institution configs.
-- Validated that `tsc --noEmit` compiles cleanly with zero TypeScript errors across `apps/web`.
-- Confirmed enrolled student roster (`derive_session_roster`) and recent observations now resolve and display properly for active sessions.
-**Files changed:**
-- `apps/web/lib/enrollment/attendance.ts`
-- `apps/web/app/sessions/[id]/live/LiveSessionDashboard.tsx`
-- `docs/PROGRESS.md`
-**Left / not done:**
-- Database test-artifact cleanup for session `d444c450` is still deferred.
-**Next session should start with:**
-- Conduct live demonstration of the Live Monitor UI against an active webcam/RTSP feed to showcase real-time roll-call updates.
-**Open questions for teammate:**
-- None.
-**Blockers:**
-- None.
-
-### 2026-09-08 — Session (Hardware Test & RTSP Verification)
-**Goal for this session:** Enroll 3 test students and execute the hardware test (`test_present_absent.py`) against a live RTSP feed.
-**Done:**
-- Created `services/camera-service/enroll_test_students.py` to process `person_a.jpg`, `person_b.jpg`, and `person_c.jpg` into Supabase (`student_biometrics` and `class_enrollments`). Fixed a NOT NULL constraint on `institution_id` in `class_enrollments`.
-- Refigured the RTSP connection (mobile hotspot `rtsp://172.20.10.1:554/stream`).
-- Successfully executed the hardware test (`test_present_absent.py`) across 5 captures against the live stream for Test Student One.
-- Kept the face quality threshold at 0.30 (score improved from ~0.20 to ~0.70-0.88 with better lighting/positioning).
-- The 5 captures produced 1 `matched` (similarity 0.6098) and 4 `low_confidence` results (similarity 0.47 to 0.59) for Test Student One.
-**Files changed:**
-- services/camera-service/enroll_test_students.py (created/run)
-- docs/PROGRESS.md
-**Left / not done:**
-- Test DB cleanup (session `d444c450` test artifacts from Session 9) is still pending but deferred.
-- Investigating the edge-case threshold where four out of five captures yielded `low_confidence` for the correct subject.
-**Next session should start with:**
-- Proceed with test artifact database cleanup, or tweak face matching thresholds / `min_valid_observations` if the `low_confidence` rate requires tuning.
-**Open questions for teammate:**
-- Consider whether `match_threshold = 0.4` (0.60 similarity) is slightly too strict for mobile camera streams, given 4 of 5 captures landed in `low_confidence`.
-**Blockers:**
-- None.
-
----
-
-### 2026-09-02 — Session (Step 6: Supabase Link & Migration 0033 Verification)
-**Goal for this session:** Link Supabase CLI, verify migration 0033 state, and prepare for 3-person hardware test.
-**Done:**
-- Linked Supabase CLI to remote project `enugorwmjtzxcmnsxizm`.
-- Verified migration state using `supabase migration list` (all migrations 0001–0033 local and remote).
-- Migration 0033 confirmed live on remote (verified via direct query of derive_session_roster() function body — aliases present). Exact timing/mechanism of when it was applied is unconfirmed — possibly applied directly during troubleshooting in this session rather than via a tracked db push. No further action needed since the live state is verified correct.
-**Files changed:**
-- docs/PROGRESS.md
-**Left / not done:**
-- Re-run 3-person hardware test (`test_present_absent.py`).
-**Next session should start with:**
-- Re-run the 3-person hardware test (`test_present_absent.py`).
-**Open questions for teammate:**
-- None.
-**Blockers:**
-- None.
+> Archived completed and superseded entries moved from docs/PROGRESS.md.
 
 ---
 
@@ -192,12 +100,16 @@ with"** field first — that's the actual to-do list, not a summary to skim.
 - Investigated and fixed quality_score scale-dependency bug in camera-service (blur normalization) — on fix/quality-score-normalization, pushed to origin, awaiting Akhil's review
 - End-to-end tested real face enrollment + live webcam recognition successfully (matched correctly across multiple runs)
 - Investigated a one-off false-positive match between two enrolled students; not reproducible across 5 follow-up runs, offline embedding distance confirms clean separation — flagged to Akhil, no threshold changes made
+- Investigated "Test Student Three" duplicates: found they bypassed deduplication during bulk import because roll_number was null.
+- Fixed bulk import deduplication bug (`apps/web/lib/enrollment/bulkImport.ts`): students without roll numbers are now checked and deduped by `(institution_id, full_name)` case-insensitively with explicit trimming on all lookups and set additions. Replaced form state-based guard with a synchronous `useRef` lock in `StudentBulkImportForm.tsx` to reliably prevent rapid double-submissions within the same event tick. Verified with isolated Node unit tests.
 **Files changed:**
 - services/enrollment-worker/app/worker.py
 - supabase/migrations/0032_enrollment_jobs_delete_policy.sql
 - supabase/migrations/0033_fix_derive_session_roster_ambiguous_column.sql
 - services/camera-service/app/recognition/provider.py
 - apps/web/lib/enrollment/actions.ts
+- apps/web/lib/enrollment/bulkImport.ts
+- apps/web/lib/enrollment/StudentBulkImportForm.tsx
 - apps/web/app/students/[id]/page.tsx
 - apps/web/app/globals.css
 - apps/web/app/layout.tsx
@@ -205,12 +117,11 @@ with"** field first — that's the actual to-do list, not a summary to skim.
 - services/camera-service/test_webcam_pipeline.py
 **Left / not done:**
 - Awaiting Akhil's review on both camera-service branches
-- The duplicate "Test Student Three" row noticed earlier in Students list — never investigated
 - Restyle propagation still incomplete on remaining pages
 - Test DB cleanup (session d444c450) still pending
 - Operational tasks (backups, rate limiting) still deferred
 **Next session should start with:**
-- Whatever Akhil says about the two pushed branches, plus the duplicate Test Student Three row.
+- Whatever Akhil says about the two pushed branches.
 **Open questions for teammate:**
 - Confirm review/merge of `fix/quality-score-normalization` (scale-dependent Laplacian fix in provider.py) and `fix/roster-ambiguous-column` (migration 0033 restoring aliased SQL in derive_session_roster()).
 **Blockers:**
@@ -312,26 +223,6 @@ with"** field first — that's the actual to-do list, not a summary to skim.
 **Blockers:**
 - None.
 
----
-
-## Test accounts (manual UI testing)
-
-Five Supabase Auth users exist on the linked remote project for manual testing.
-The role-scoped test trio are linked to institution "Test University"
-(id `70881552-0663-494b-8b95-59cfdd5fb246`); the two named admin accounts are linked to institution `485a5846-54c5-48bf-a523-6f86ecb54c42`.
-
-| Role    | Email               | `public.users.id`                           |
-|---------|---------------------|---------------------------------------------|
-| admin   | admin@test.local    | 38745115-3314-4032-8488-db196a71f966|
-| teacher | teacher@test.local  | 85216994-0d8d-4345-b772-d0f3bb942fae|
-| student | student@test.local  | 68714a6a-86ce-405f-a2fb-e5565648e772|
-| admin   | akhil@test.com      | 6c37cb61-ca55-45c5-b6a9-160abcf5f592|
-| admin   | ansh@test.com       | 52111cdb-6e33-4b7a-927b-1c03ba8e98f0|
-
-Passwords are kept out of this file intentionally — check the local `apps/web/.env.local`
-gitignored dev notes, or reset via the Supabase dashboard.
-
-Note: `student@test.local` now has a `students` row (Aisha Mehta, roll PS-2026-084, institution "Test University", consent_given=true).
 
 ---
 
@@ -623,21 +514,3 @@ Clean up via SQL before any real pilot data is loaded. The fake data passes the 
 **Blockers:**
 - None.
 
-
-### 2026-09-09 — Session (live monitor dashboard + RTSP fix + cleanup push)
-**Goal for this session:** Clean up and push pending UI/backend work; resolve stray test artifacts (photo files, local settings) that had crept into git; separate out an in-progress, not-yet-working recognition change.
-**Done:**
-- Committed and pushed: Live Monitor dashboard (`LiveSessionDashboard.tsx`, roll-call real-time view), RTSP URL parsing fix in `credentials.py` (handles full URL or path passed as host), UI polish across cameras/checkins/classes/sessions pages, `docs/OPERATIONS.md` added, camera-service test/enrollment scripts added, unused `debug_compare.py` removed.
-- Removed 5 test photo files (`person_a.jpg`, `person_b.jpg`, `person_c.jpg`, `debug_frame.jpg`, `test_image.jpg`) that had been accidentally staged — conflicted with the project's source-photo-deletion privacy rule.
-- Excluded `.claude/settings.local.json` from version control (added to `.gitignore`) — local tool permissions, not meant to be shared.
-- Pushed as commit `83d6d1e`.
-**Files changed:** see commit `83d6d1e` for full list.
-**Left / not done:**
-- Low-light recognition enhancement (`CLAHE` contrast boost in `services/camera-service/app/recognition/provider.py`) plus paired migration `0034_update_attendance_config_match_threshold.sql` (0.40→0.45 threshold) — tested by dev, did not work correctly. Left uncommitted/unstaged on disk, NOT pushed. Needs rework and proper before/after testing against existing enrolled embeddings before re-attempting.
-**Next session should start with:**
-- Diagnose why the low-light enhancement didn't work (get specifics: errors vs. wrong matches vs. performance) before rewriting.
-- If retried, test against already-enrolled embeddings to check for accuracy regression from the enhancement being applied inconsistently between enrollment and recognition.
-**Open questions for teammate:**
-- None new from this session.
-**Blockers:**
-- None for the pushed work. Low-light recognition fix is blocked pending rework.

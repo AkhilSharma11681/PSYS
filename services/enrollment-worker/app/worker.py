@@ -1,3 +1,5 @@
+import ast
+import math
 import os
 import time
 from datetime import datetime, timezone
@@ -15,6 +17,90 @@ POLL_INTERVAL_SECONDS = 5
 MAX_RETRIES = 3
 
 supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+
+_config_cache = {}
+
+
+def _parse_embedding(raw):
+    """Supabase returns pgvector columns either as native lists or as strings
+    like '[0.1,0.2,...]'. Normalize both cases."""
+    if isinstance(raw, str):
+        return ast.literal_eval(raw)
+    return raw
+
+
+def get_match_threshold(institution_id: str) -> float:
+    """Fetch match_threshold from institution-specific attendance_config if active,
+    otherwise fallback to platform default (institution_id is null). Cached per-process."""
+    if institution_id in _config_cache:
+        return _config_cache[institution_id]
+
+    result = (
+        supabase.table("attendance_config")
+        .select("match_threshold")
+        .eq("institution_id", institution_id)
+        .eq("is_active", True)
+        .execute()
+    )
+
+    if not result.data:
+        result = (
+            supabase.table("attendance_config")
+            .select("match_threshold")
+            .is_("institution_id", "null")
+            .eq("is_active", True)
+            .execute()
+        )
+
+    if not result.data:
+        raise RuntimeError("no attendance_config found — not even a platform default")
+
+    threshold = float(result.data[0]["match_threshold"])
+    _config_cache[institution_id] = threshold
+    return threshold
+
+
+def fetch_other_biometrics(institution_id: str, student_id: str, batch_size: int = 1000) -> list[dict]:
+    """Fetch all biometrics for other students in the institution with pagination
+    to avoid PostgREST default limit truncation."""
+    all_rows = []
+    offset = 0
+    while True:
+        res = (
+            supabase.table("student_biometrics")
+            .select("student_id, face_embedding, face_embedding_v2")
+            .eq("institution_id", institution_id)
+            .neq("student_id", student_id)
+            .range(offset, offset + batch_size - 1)
+            .execute()
+        )
+        data = res.data or []
+        all_rows.extend(data)
+        if len(data) < batch_size:
+            break
+        offset += batch_size
+    return all_rows
+
+
+def is_duplicate_face(
+    new_embedding: list[float],
+    other_biometrics: list[dict],
+    threshold: float,
+) -> tuple[bool, str | None, float | None]:
+    """Check if new_embedding is within threshold Euclidean distance of any
+    embedding in other_biometrics.
+
+    other_biometrics is a list of dicts with 'student_id' and 'face_embedding'.
+    Returns (is_duplicate, collided_student_id, distance).
+    """
+    for row in other_biometrics:
+        existing_embedding = _parse_embedding(row.get("face_embedding"))
+        if existing_embedding is None:
+            continue
+        dist = math.dist(new_embedding, existing_embedding)
+        if dist <= threshold:
+            return True, row.get("student_id"), dist
+    return False, None, None
 
 
 def process_job(job):
@@ -39,27 +125,95 @@ def process_job(job):
             raise ValueError(f"embed failed ({response.status_code}): {response.text}")
 
         result = response.json()
+        new_embedding = result["embedding"]
+        new_embedding_v2 = result.get("embedding_v2")
+        new_quality = result["quality_score"]
 
+        # Cross-student duplicate check: compare new embedding against all embeddings of other students in the same institution
+        match_threshold = get_match_threshold(institution_id)
+        other_biometrics = fetch_other_biometrics(institution_id, student_id)
+
+        is_dup, collided_student_id, dist = is_duplicate_face(
+            new_embedding,
+            other_biometrics,
+            match_threshold,
+        )
+        if is_dup:
+            collided_student = None
+            try:
+                stu_res = (
+                    supabase.table("students")
+                    .select("full_name, roll_number")
+                    .eq("id", collided_student_id)
+                    .maybe_single()
+                    .execute()
+                )
+                collided_student = stu_res.data
+            except Exception as e:
+                print(f"[duplicate check warning] failed to look up collided student {collided_student_id}: {e}")
+
+            if collided_student:
+                full_name = collided_student.get("full_name") or "Unknown"
+                roll_number = collided_student.get("roll_number") or "N/A"
+                error_msg = (
+                    f"Photo appears to match an existing student's face "
+                    f"(student: {full_name}, roll: {roll_number}). Manual review required."
+                )
+            else:
+                error_msg = (
+                    f"Photo appears to match an existing student's face "
+                    f"(student ID: {collided_student_id}). Manual review required."
+                )
+
+            supabase.table("enrollment_jobs").update(
+                {
+                    "status": "failed",
+                    "error": error_msg,
+                }
+            ).eq("id", job_id).execute()
+            print(
+                f"[duplicate face detected] job {job_id} -> student {student_id} "
+                f"collided with student {collided_student_id} (distance {dist:.4f} <= {match_threshold})"
+            )
+            return
+
+        # ASSUMPTION: Single worker process only. No atomic job claiming exists, so concurrent workers would race here.
         existing = (
             supabase.table("student_biometrics")
-            .select("id")
+            .select("id, quality_score")
             .eq("student_id", student_id)
             .eq("is_primary", True)
             .execute()
         )
-        is_primary = len(existing.data) == 0
+
+        is_primary = False
+        old_primary_id = None
+
+        if len(existing.data) == 0:
+            is_primary = True
+        else:
+            current_primary = existing.data[0]
+            if new_quality > (current_primary.get("quality_score") or 0.0):
+                is_primary = True
+                old_primary_id = current_primary["id"]
 
         supabase.table("student_biometrics").insert(
             {
                 "institution_id": institution_id,
                 "student_id": student_id,
-                "face_embedding": result["embedding"],
+                "face_embedding": new_embedding,
+                "face_embedding_v2": new_embedding_v2,
                 "embedding_model": result["embedding_model"],
                 "embedding_version": 1,
                 "is_primary": is_primary,
-                "quality_score": result["quality_score"],
+                "quality_score": new_quality,
             }
         ).execute()
+        
+        if old_primary_id:
+            supabase.table("student_biometrics").update(
+                {"is_primary": False}
+            ).eq("id", old_primary_id).execute()
 
         student = (
             supabase.table("students")

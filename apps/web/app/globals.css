@@ -48,6 +48,10 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+a, button {
+  cursor: pointer;
+}
+
 /* ---- Shared page shell (light) ---- */
 .page-shell {
   min-height: 100%;
@@ -177,7 +181,7 @@ body {
 .btn-secondary-sm:hover { background: #F8FAFC; border-color: #CBD5E1; }
 
 /* ---- Forms ---- */
-.field-label { display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.35rem; color: var(--foreground); font-family: 'Inter', sans-serif; }
+.field-label { display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.35rem; color: var(--foreground); font-family: 'Inter', sans-serif; line-height: 1.25rem; }
 
 /* Base .field-input matches .btn-primary/.btn-secondary exactly (2.25rem, 1px border, border-box).
    Use .field-input-sm for tight inline forms. */

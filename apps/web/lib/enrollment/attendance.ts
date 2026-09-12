@@ -160,3 +160,92 @@ export async function getAllDisputes(statusFilter?: string) {
   if (error) throw new Error(`Failed to load disputes: ${error.message}`)
   return data ?? []
 }
+
+/**
+ * Trigger an immediate real-time capture and recognition run on a camera for a session.
+ */
+export async function triggerCameraCapture(cameraId: string, sessionId: string) {
+  await getCurrentUser() // auth guard
+  const token = await getAccessToken()
+
+  try {
+    const res = await fetch(`${CAMERA_SERVICE_URL}/cameras/${cameraId}/capture-and-recognize`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ session_id: sessionId }),
+      cache: 'no-store',
+    })
+
+    const data = await res.json()
+    if (!res.ok) {
+      return { success: false, error: data.detail || 'Capture failed' }
+    }
+    
+    // Check if the camera service failed to get a frame
+    if (data.capture_succeeded === false) {
+      return { success: false, error: `Camera stream unreachable: ${data.error}` }
+    }
+
+    revalidatePath(`/sessions/${sessionId}/live`)
+    revalidatePath(`/sessions/${sessionId}`)
+    return { success: true, data }
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to connect to camera service' }
+  }
+}
+
+/**
+ * Get live observations and enrolled student roster for a live session.
+ */
+export async function getLiveSessionData(sessionId: string) {
+  const user = await getCurrentUser()
+  const supabase = await createClient()
+
+  // 1. Session info
+  const { data: session } = await supabase
+    .from('class_sessions')
+    .select('id, class_id, camera_id, scheduled_start, scheduled_end, actual_start, actual_end, status, camera_status, processing_status, classes(subject, room_id)')
+    .eq('id', sessionId)
+    .single()
+
+  if (!session) throw new Error('Session not found')
+
+  // 2. Roster via derive_session_roster
+  const { data: rosterRows } = await supabase.rpc('derive_session_roster', { p_session_id: sessionId })
+  const studentIds = (rosterRows || []).map((r: any) => r.student_id)
+
+  // 3. Students info
+  let students: any[] = []
+  if (studentIds.length > 0) {
+    const { data: studentList } = await supabase
+      .from('students')
+      .select('id, full_name, roll_number')
+      .in('id', studentIds)
+    students = studentList || []
+  }
+
+  // 4. Live observations for this session
+  const { data: observations } = await supabase
+    .from('attendance_observations')
+    .select('id, student_id, captured_at, similarity_score, quality_score, match_status, evidence_photo_url')
+    .eq('session_id', sessionId)
+    .order('captured_at', { ascending: false })
+    .limit(100)
+
+  // 5. Cameras for institution/room
+  const { data: cameras } = await supabase
+    .from('cameras')
+    .select('id, label, stream_path, is_active')
+    .eq('institution_id', user.institution_id)
+
+  return {
+    session,
+    students,
+    observations: observations || [],
+    cameras: cameras || [],
+  }
+}
+

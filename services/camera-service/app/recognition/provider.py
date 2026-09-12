@@ -48,8 +48,14 @@ class DlibFaceRecognitionProvider(FaceRecognitionProvider):
         height = bottom - top
         size_score = min(1.0, (width * height) / (150 * 150))
 
-        gray = cv2.cvtColor(crop, cv2.COLOR_RGB2GRAY)
-        laplacian_var = cv2.Laplacian(gray, cv2.CV_64F).var()
+        # Normalize scale dependency by resizing all crops to fixed 150x150
+        crop_150 = cv2.resize(crop, (150, 150))
+        gray = cv2.cvtColor(crop_150, cv2.COLOR_RGB2GRAY)
+
+        # Apply light 3x3 blur to equalize sensor noise vs compression artifacts
+        gray_blurred = cv2.GaussianBlur(gray, (3, 3), 0)
+
+        laplacian_var = cv2.Laplacian(gray_blurred, cv2.CV_64F).var()
         blur_score = min(1.0, laplacian_var / 100.0)
 
         mean_brightness = float(np.mean(gray))
@@ -120,13 +126,16 @@ def find_best_match(provider, embedding, candidate_embeddings):
     """Returns raw distance/similarity without applying any threshold --
     the caller decides matched/low_confidence/unknown based on its own
     config (spec: thresholds live in attendance_config, not hardcoded)."""
-    import face_recognition
-    import numpy as np
-
     if not candidate_embeddings:
         return None
 
-    distances = face_recognition.face_distance(candidate_embeddings, np.array(embedding))
-    best_index = int(np.argmin(distances))
-    best_distance = float(distances[best_index])
-    return BestMatch(best_index, best_distance, 1 - best_distance)
+    # Delegate to provider.match with threshold=inf so it returns the best match
+    # without filtering out lower similarity results.
+    res = provider.match(embedding, candidate_embeddings, threshold=float("inf"))
+    if res.student_index is None:
+        return None
+
+    similarity = res.similarity_score
+    distance = 1.0 - similarity
+
+    return BestMatch(res.student_index, distance, similarity)

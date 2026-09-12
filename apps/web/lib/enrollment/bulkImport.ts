@@ -55,11 +55,14 @@ export async function importStudents(formData: FormData) {
 
   const { data: existing } = await supabase
     .from('students')
-    .select('roll_number')
+    .select('roll_number, full_name')
     .eq('institution_id', user.institution_id)
 
   const existingRollNumbers = new Set(
-    (existing || []).map((s) => s.roll_number).filter(Boolean)
+    (existing || []).map((s) => s.roll_number?.trim()).filter(Boolean)
+  )
+  const existingFullNames = new Set(
+    (existing || []).map((s) => s.full_name?.trim().toLowerCase()).filter(Boolean)
   )
 
   let created = 0
@@ -67,32 +70,45 @@ export async function importStudents(formData: FormData) {
   const errors: string[] = []
 
   for (const row of rows) {
-    const fullName = row['full_name']?.trim()
-    const rollNumber = row['roll_number']?.trim() || null
+    const rawFullName = row['full_name']
+    const rawRollNumber = row['roll_number']
+
+    const fullName = rawFullName?.trim()
+    const rollNumber = rawRollNumber?.trim() || null
 
     if (!fullName) {
       skipped++
       continue
     }
-    if (rollNumber && existingRollNumbers.has(rollNumber)) {
+
+    const trimmedFullName = fullName.trim()
+    const normalizedFullName = trimmedFullName.toLowerCase()
+    const trimmedRollNumber = rollNumber ? rollNumber.trim() : null
+
+    if (trimmedRollNumber && existingRollNumbers.has(trimmedRollNumber)) {
+      skipped++
+      continue
+    }
+    if (!trimmedRollNumber && existingFullNames.has(normalizedFullName)) {
       skipped++
       continue
     }
 
     const { error } = await supabase.from('students').insert({
       institution_id: user.institution_id,
-      full_name: fullName,
-      roll_number: rollNumber,
+      full_name: trimmedFullName,
+      roll_number: trimmedRollNumber,
       status: 'active',
       consent_given: true,
       consent_recorded_at: new Date().toISOString(),
     })
 
     if (error) {
-      errors.push(`${fullName}: ${error.message}`)
+      errors.push(`${trimmedFullName}: ${error.message}`)
     } else {
       created++
-      if (rollNumber) existingRollNumbers.add(rollNumber)
+      if (trimmedRollNumber) existingRollNumbers.add(trimmedRollNumber)
+      existingFullNames.add(normalizedFullName)
     }
   }
 

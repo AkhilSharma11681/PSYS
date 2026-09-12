@@ -1,14 +1,17 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { importStudents } from '@/lib/enrollment/bulkImport'
 
 export default function StudentBulkImportForm() {
   const [result, setResult] = useState<{ created: number; skipped: number; errors: string[] } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
+  const submittingRef = useRef(false)
 
   async function handleSubmit(formData: FormData) {
+    if (submittingRef.current) return
+    submittingRef.current = true
     setPending(true)
     setError(null)
     setResult(null)
@@ -19,6 +22,7 @@ export default function StudentBulkImportForm() {
       setError(e instanceof Error ? e.message : 'Import failed')
     } finally {
       setPending(false)
+      submittingRef.current = false
     }
   }
 
